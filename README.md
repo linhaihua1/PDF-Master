@@ -7,12 +7,13 @@ Windows 桌面版 PDF 处理工具。**双击安装即用，不需要装 Java、
 
 | 产物 | 路径 | 规格 |
 |---|---|---|
-| 安装包 | `pdfkit/dist-installer/PdfKit-1.1.0.exe` | 73 MB，含精简 JRE，双击安装 |
-| 绿色版 | `pdfkit/dist/PdfKit/` | 160 MB，整个目录拷走即用，免安装 |
-| 源码 | `pdfkit/src/` | 33 个 Java 文件 |
-| 测试 | `pdfkit/src/test/java/io/pdfkit/SmokeTest.java` | 35 个端到端用例 |
+| 安装包 | `pdfkit/dist-installer/PdfKit-1.2.0.exe` | 72 MB，含精简 JRE，双击安装 |
+| 绿色版 | `pdfkit/dist/PdfKit/` | 159 MB，整个目录拷走即用，免安装 |
+| 源码 | `pdfkit/src/main/java/` | 32 个 Java 文件，60 项能力 |
+| 测试 | `pdfkit/src/test/java/io/pdfkit/` | 76 个用例，S1 接口 / S2 UI / S3 安全 / S4 功能 / S5 性能 |
+| 测试报告 | `pdfkit/TEST-REPORT.md` | 缺陷清单、性能实测、门禁判定 |
 
-实测：启动到窗口可见 1.1 秒，空闲内存 136 MB。
+实测（打包产物 `PdfKit.exe`）：启动到主窗口可见 **1.15 秒**，空闲内存 **43 MB**，60 项能力全部注册。
 
 ## 为什么是「重写」而不是「合并」
 
@@ -44,7 +45,7 @@ Windows 桌面版 PDF 处理工具。**双击安装即用，不需要装 Java、
 ## 目录结构
 
 ```
-PDF/
+PDF-Master/
 ├── pdfkit/                     # 唯一的功能代码
 │   ├── src/main/java/io/pdfkit/
 │   │   ├── App.java            # 入口
@@ -52,16 +53,20 @@ PDF/
 │   │   ├── ops/                # 15 个能力类，60 项能力
 │   │   ├── ui/                 # Swing + FlatLaf 界面（表单由参数定义自动生成）
 │   │   └── util/               # PDF 加载/原子保存、字体、日志、系统探测
-│   ├── src/main/resources/fonts/  # 内置思源黑体（OFL 许可，子集嵌入）
-│   ├── src/test/               # 35 个端到端测试
-│   ├── scripts/build.ps1       # 一键构建 + 打包
-│   ├── dist/                   # 绿色版产物
-│   └── dist-installer/         # 安装包产物
-└── docs/
-    ├── requirements/           # 需求分析 v1.1 + 98 条验收 Checklist
-    ├── architecture.md         # 架构设计
-    ├── build.md                # 构建与打包
-    └── capability-matrix.md    # 60 项能力矩阵
+│   ├── src/main/resources/fonts/  # 内置思源黑体 TTF（OFL 许可，子集嵌入）
+│   ├── src/test/java/io/pdfkit/   # 76 个用例，5 个测试类 + 1 个启动夹具
+│   ├── scripts/
+│   │   ├── build.ps1           # 一键构建 + 打包
+│   │   └── build-font.py       # 重建内置字体（仅换字体时需要）
+│   ├── TEST-REPORT.md          # 五阶段测试报告
+│   ├── dist/                   # 绿色版产物（已 gitignore）
+│   └── dist-installer/         # 安装包产物（已 gitignore）
+├── docs/
+│   ├── requirements/           # 需求分析 + 验收 Checklist
+│   ├── architecture.md         # 架构设计
+│   ├── build.md                # 构建与打包
+│   └── capability-matrix.md    # 60 项能力矩阵
+└── .gitignore
 ```
 
 ## 快速开始
@@ -71,8 +76,9 @@ PDF/
 cd pdfkit
 powershell -File scripts/build.ps1
 
-# 只跑测试
-JAVA_HOME=C:/dev/jdk-17.0.13 /c/dev/gradle-8.14/bin/gradle test
+# 只跑测试（需 JDK 17 与 Gradle 8.x，均需自行安装）
+cd pdfkit
+gradle test
 ```
 
 ## 设计要点
@@ -81,11 +87,19 @@ JAVA_HOME=C:/dev/jdk-17.0.13 /c/dev/gradle-8.14/bin/gradle test
 
 **任务队列 + 产物隔离**。处理在后台线程执行（并发 2），支持取消；所有产物先写 `.part` 再原子移动，中途失败不留半个文件；输出文件名自动避让已存在文件与源文件。
 
-**中文不出方框**。内置思源黑体子集，随安装包分发，不依赖系统字体。每个 PDF 只增加约 40 KB。
+**中文不出方框**。内置思源黑体（Noto Sans SC）子集，随安装包分发，不依赖系统字体，覆盖 GB2312 全部 7445 个码位。每个 PDF 只增加约 40 KB。
+
+字体有两条硬约束，换字体时必须同时满足，否则测试全绿但用户拿到的是方框或乱码：
+
+1. **必须是 glyf 轮廓的 TrueType**。PDFBox 的 `PDType0Font` 不支持 CFF 轮廓的 OTF，加载直接抛异常；代码 catch 后回退系统字体，于是「零依赖」静默失效。
+2. **cmap 不能多对一**。PDFBox 生成 ToUnicode 时按 GID 反查字形，同一字形只保留最小码位。若字体把部首码位（如 U+2EDA「⻚」）映射到与常用汉字相同的字形，写「页」提取出来就是「⻚」——字形正确，但复制、搜索、文本提取、转 Word 全部出错。
+
+`scripts/build-font.py` 把这两条固化进构建流程：子集白名单含 GB2312 全码表，对同形字逐字形拆成独立副本，产出前断言 cmap 严格一对一，不满足则拒绝写出文件。
 
 **涂黑是真删除**。涂黑、反色、扫描件效果会把目标页整页栅格化后替换内容流，原文字在文件里不存在，复制和搜索都取不到。代价是该页不再可检索。
 
 ## 许可
 
 本项目代码原创。内置字体思源黑体（Noto Sans SC）采用 SIL Open Font License 1.1，许可证全文见 `pdfkit/src/main/resources/fonts/OFL.txt`。
-上游三个工程仅作为功能行为参考，其源代码已从仓库移除（备份见下方说明），未复制任何代码、UI 资源或文案。
+上游三个工程（Stirling-PDF / PDFPatcher / ToolKnit）仅作为功能行为参考，其源代码已从工作区移除，未复制任何代码、UI 资源或文案。
+移除前的快照保留在 git 历史中（提交 `b6c5804` 之前），需要时可从历史检出。

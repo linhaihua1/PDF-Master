@@ -32,7 +32,7 @@ cd <仓库根>\pdfkit
 | 产物 | 路径 | 说明 |
 |---|---|---|
 | 绿色版 | `dist\PdfKit\PdfKit.exe` | 整个 `PdfKit` 目录可直接拷走 |
-| 安装包 | `dist-installer\PdfKit-1.1.0.exe` | 双击安装，含开始菜单与卸载项 |
+| 安装包 | `dist-installer\PdfKit-1.2.0.exe` | 双击安装，含开始菜单与卸载项 |
 
 ## 3. 手工构建（等价命令）
 
@@ -49,14 +49,14 @@ export JAVA_HOME="C:/dev/jdk-17.0.13"
 /c/dev/gradle-8.14/bin/gradle installDist
 
 # 绿色版
-"$JAVA_HOME/bin/jpackage" --type app-image --name PdfKit --app-version 1.1.0 \
-  --input build/install/pdfkit/lib --main-jar pdfkit-1.1.0.jar --main-class io.pdfkit.App \
+"$JAVA_HOME/bin/jpackage" --type app-image --name PdfKit --app-version 1.2.0 \
+  --input build/install/pdfkit/lib --main-jar pdfkit-1.2.0.jar --main-class io.pdfkit.App \
   --dest dist --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m"
 
 # 安装包（需要 WiX 在 PATH）
 export PATH="/c/dev/wix314:$PATH"
-"$JAVA_HOME/bin/jpackage" --type exe --name PdfKit --app-version 1.1.0 \
-  --input build/install/pdfkit/lib --main-jar pdfkit-1.1.0.jar --main-class io.pdfkit.App \
+"$JAVA_HOME/bin/jpackage" --type exe --name PdfKit --app-version 1.2.0 \
+  --input build/install/pdfkit/lib --main-jar pdfkit-1.2.0.jar --main-class io.pdfkit.App \
   --dest dist-installer --win-menu --win-shortcut --win-dir-chooser \
   --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m"
 ```
@@ -75,14 +75,26 @@ export PATH="/c/dev/wix314:$PATH"
 ## 5. 测试
 
 ```bash
-JAVA_HOME=C:/dev/jdk-17.0.13 /c/dev/gradle-8.14/bin/gradle test
+export JAVA_HOME="C:/dev/jdk-17.0.13"
+/c/dev/gradle-8.14/bin/gradle test
 ```
 
-35 个端到端用例，覆盖 60 项能力中的 44 项。测试不启界面，直接构造 `Ctx` 调 `cap.op().run(ctx)` —— 这也是「能力层不依赖 UI」这一架构约束的验证手段。
+76 个用例，按五阶段串行门禁组织（编排见 `test-execution-pipeline`）：
 
-未覆盖的 16 项主要是分析类（输出为文字报告，验证价值低）、以及需要特殊样本的能力（表单、加密、损坏文件）。
+| 阶段 | 测试类 | 用例 | 关注点 |
+|---|---|---|---|
+| S1 接口 | `ContractTest` | 10 | 60 项能力的元数据、参数声明、错误码契约、错误信息不泄露内部实现 |
+| S2 UI | `UiTest` | 6 | 控件树遍历 + 反射读私有字段，含两档窗口尺寸的布局回归断言 |
+| S3 安全 | `SecurityTest` | 11 | XXE、深层嵌套炸弹、附件名路径穿越、AES-256 强度、密码不落日志 |
+| S4 功能 | `FunctionalTest` | 8 | 逐项断言产物内容（页数、提取文本、书签层级、加密状态、docx 条目） |
+| S5 性能 | `PerformanceTest` | 6 | 启动耗时、合并与压缩吞吐、空闲与峰值内存、双任务并发 |
 
-报告：`build/reports/tests/test/index.html`
+另有 `SmokeTest`（35 个历史端到端用例）与 `StartupProbe`（启动夹具：在独立 JVM 里复现 App 初始化，
+用于测启动耗时与空闲内存，避免测试框架自身的堆占用污染数据）。
+
+测试不启界面，直接构造 `Ctx` 调 `cap.op().run(ctx)` —— 这也是「能力层不依赖 UI」这一架构约束的验证手段。
+
+报告：`build/reports/tests/test/index.html`。缺陷清单与性能实测见 `pdfkit/TEST-REPORT.md`。
 
 ## 6. 能力文档同步
 
