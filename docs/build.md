@@ -32,7 +32,7 @@ cd <仓库根>\pdfkit
 | 产物 | 路径 | 说明 |
 |---|---|---|
 | 绿色版 | `dist\PdfKit\PdfKit.exe` | 整个 `PdfKit` 目录可直接拷走 |
-| 安装包 | `dist-installer\PdfKit-1.2.0.exe` | 双击安装，含开始菜单与卸载项 |
+| 安装包 | `dist-installer\PdfKit-1.2.1.exe` | 双击安装，含开始菜单与卸载项 |
 
 ## 3. 手工构建（等价命令）
 
@@ -49,14 +49,14 @@ export JAVA_HOME="C:/dev/jdk-17.0.13"
 /c/dev/gradle-8.14/bin/gradle installDist
 
 # 绿色版
-"$JAVA_HOME/bin/jpackage" --type app-image --name PdfKit --app-version 1.2.0 \
-  --input build/install/pdfkit/lib --main-jar pdfkit-1.2.0.jar --main-class io.pdfkit.App \
+"$JAVA_HOME/bin/jpackage" --type app-image --name PdfKit --app-version 1.2.1 \
+  --input build/install/pdfkit/lib --main-jar pdfkit-1.2.1.jar --main-class io.pdfkit.App \
   --dest dist --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m"
 
 # 安装包（需要 WiX 在 PATH）
 export PATH="/c/dev/wix314:$PATH"
-"$JAVA_HOME/bin/jpackage" --type exe --name PdfKit --app-version 1.2.0 \
-  --input build/install/pdfkit/lib --main-jar pdfkit-1.2.0.jar --main-class io.pdfkit.App \
+"$JAVA_HOME/bin/jpackage" --type exe --name PdfKit --app-version 1.2.1 \
+  --input build/install/pdfkit/lib --main-jar pdfkit-1.2.1.jar --main-class io.pdfkit.App \
   --dest dist-installer --win-menu --win-shortcut --win-dir-chooser \
   --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m"
 ```
@@ -197,7 +197,7 @@ export JAVA_HOME="C:/dev/jdk-17.0.13"
 **④ 确认打进产物**
 
 ```bash
-unzip -l build/install/pdfkit/lib/pdfkit-1.2.0.jar | grep fonts/NotoSans
+unzip -l build/install/pdfkit/lib/pdfkit-1.2.1.jar | grep fonts/NotoSans
 ```
 
 应能看到约 9.75 MB 的 `NotoSansSC-Regular.ttf`。

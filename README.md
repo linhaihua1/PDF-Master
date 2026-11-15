@@ -7,7 +7,7 @@ Windows 桌面版 PDF 处理工具。**双击安装即用，不需要装 Java、
 
 | 产物 | 路径 | 规格 |
 |---|---|---|
-| 安装包 | `pdfkit/dist-installer/PdfKit-1.2.0.exe` | 72 MB，含精简 JRE，双击安装 |
+| 安装包 | `pdfkit/dist-installer/PdfKit-1.2.1.exe` | 72 MB，含精简 JRE，双击安装 |
 | 绿色版 | `pdfkit/dist/PdfKit/` | 159 MB，整个目录拷走即用，免安装 |
 | 源码 | `pdfkit/src/main/java/` | 32 个 Java 文件，60 项能力 |
 | 测试 | `pdfkit/src/test/java/io/pdfkit/` | 76 个用例，S1 接口 / S2 UI / S3 安全 / S4 功能 / S5 性能 |

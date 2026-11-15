@@ -5,7 +5,7 @@
 安装包 72 MB，内置运行时、中文字体与全部依赖 —— 目标机器不需要装 JDK、不需要装任何运行库、不需要配环境变量。
 
 ```
-dist-installer\PdfKit-1.2.0.exe   ← 双击安装（可选目录、开始菜单、桌面快捷方式）
+dist-installer\PdfKit-1.2.1.exe   ← 双击安装（可选目录、开始菜单、桌面快捷方式）
 dist\PdfKit\PdfKit.exe            ← 免安装绿色版，整个 dist\PdfKit 目录拷走即用
 ```
 
@@ -42,7 +42,7 @@ PDF 转图片（PNG/JPG，DPI 可调）、图片转 PDF（多图排序/纸张适
 ## 二、运行方式
 
 ### 安装版（推荐给他人使用）
-双击 `PdfKit-1.2.0.exe` → 选择目录 → 完成。默认装到 `%LOCALAPPDATA%\Programs\PdfKit`，**不需要管理员权限**。
+双击 `PdfKit-1.2.1.exe` → 选择目录 → 完成。默认装到 `%LOCALAPPDATA%\Programs\PdfKit`，**不需要管理员权限**。
 
 ### 绿色版（U 盘/内网分发）
 把 `dist\PdfKit` 整个文件夹复制到目标机器，双击 `PdfKit.exe`。
@@ -81,15 +81,15 @@ export JAVA_HOME="C:/dev/jdk-17.0.13"
 /c/dev/gradle-8.14/bin/gradle installDist
 
 # 出绿色版
-"$JAVA_HOME/bin/jpackage" --type app-image --name PdfKit --app-version 1.2.0 \
-  --input build/install/pdfkit/lib --main-jar pdfkit-1.2.0.jar \
+"$JAVA_HOME/bin/jpackage" --type app-image --name PdfKit --app-version 1.2.1 \
+  --input build/install/pdfkit/lib --main-jar pdfkit-1.2.1.jar \
   --main-class io.pdfkit.App --dest dist \
   --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m"
 
 # 出安装包（需 WiX 在 PATH）
 export PATH="/c/dev/wix314:$PATH"
-"$JAVA_HOME/bin/jpackage" --type exe --name PdfKit --app-version 1.2.0 \
-  --input build/install/pdfkit/lib --main-jar pdfkit-1.2.0.jar \
+"$JAVA_HOME/bin/jpackage" --type exe --name PdfKit --app-version 1.2.1 \
+  --input build/install/pdfkit/lib --main-jar pdfkit-1.2.1.jar \
   --main-class io.pdfkit.App --dest dist-installer \
   --win-menu --win-shortcut --win-dir-chooser \
   --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m"

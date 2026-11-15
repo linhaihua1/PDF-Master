@@ -16,6 +16,7 @@ Thumbs.db
 # PdfKit 构建产物
 pdfkit/.gradle/
 pdfkit/build/
+# dist 与 dist-installer，以及为绕开文件占用而改名出的 dist-old-* / dist-installer-old-*
+# 注意：任何重命名都必须以 dist- 开头，否则 71 MB 的安装包会被意外提交
 pdfkit/dist/
-pdfkit/dist-installer/
-pdfkit/dist-old-*/
+pdfkit/dist-*/
