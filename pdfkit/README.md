@@ -5,41 +5,44 @@
 安装包 73 MB，内置运行时、中文字体与全部依赖 —— 目标机器不需要装 JDK、不需要装任何运行库、不需要配环境变量。
 
 ```
-dist-installer\PdfKit-1.0.0.exe   ← 双击安装（可选目录、开始菜单、桌面快捷方式）
+dist-installer\PdfKit-1.1.0.exe   ← 双击安装（可选目录、开始菜单、桌面快捷方式）
 dist\PdfKit\PdfKit.exe            ← 免安装绿色版，整个 dist\PdfKit 目录拷走即用
 ```
 
 ---
 
-## 一、能做什么（46 项）
+## 一、能做什么（60 项）
 
-### 页面组织
-合并（保留书签）、拆分（按页数/按范围）、按大小拆分、按章节拆分、按文本筛选页面、按尺寸筛选页面、删除空白页、旋转、裁剪、缩放、删除页面、提取页面、重排页面、多页排版 N-up、叠加文档
+### 页面组织（18）
+合并（保留书签）、拆分（按页数/按范围）、按大小拆分、按章节拆分、按文本筛选页面、按尺寸筛选页面、按有无图片筛选、删除空白页、旋转、裁剪、缩放、删除页面、提取页面、重排页面、多页排版 N-up、海报分块打印、小册子拼版、叠加文档
 
-### 内容编辑
-添加页码（中文模板）、添加水印（平铺/角度/透明度）、添加印章（圆形红章）、插入图片、修改元数据、展平表单、反色/夜间模式、做旧扫描件效果、附件管理（列出/添加/导出）
+### 内容编辑（15）
+添加页码（中文模板）、添加水印（平铺/角度/透明度）、页眉页脚（六位模板）、添加印章（圆形红章）、插入图片、修改元数据、展平表单、反色/夜间模式、做旧扫描件效果、附件管理（列出/添加/导出）、注释导出清单、注释分类清除、添加便签
 
-### 格式转换
-PDF 转图片（PNG/JPG，DPI 可调）、图片转 PDF（多图排序/纸张适配）、PDF 转文本
+### 格式转换（7）
+PDF 转图片（PNG/JPG，DPI 可调）、图片转 PDF（多图排序/纸张适配）、PDF 转文本、提取内嵌图片、PDF 转多页 TIFF、PDF 转 Markdown、PDF 转 Word
 
-### 书签与目录
+### 表单处理（3）
+读取字段（可导出 CSV）、填充字段、锁定/解锁字段
+
+### 书签与目录（3）
 **自动生成书签**（按字号+加粗识别标题，可调层级）、导出书签 XML、导入书签 XML
 
-### 安全与合规
-添加密码（AES-256）、移除密码、净化 PDF（去 JS/OpenAction/嵌入文件）、**自动涂黑**（身份证/手机号/银行卡/邮箱正则识别）、**手动涂黑**、验证签名、移除签名
+### 安全与合规（8）
+添加密码（AES-256）、移除密码、净化 PDF（去 JS/OpenAction/嵌入文件）、**证书签名**（PKCS#7，支持自签名与 p12）、验证签名、移除签名、**自动涂黑**（身份证/手机号/银行卡/邮箱正则识别）、**手动涂黑**
 
-### 读取与分析
+### 读取与分析（3）
 文档信息、**字体嵌入体检**（标出未嵌入字体）、**文档结构探查**（对象/xref/损坏定位）
 
-### 优化与修复
-压缩（图片重采样+JPG 重编码）、修复（重写结构）
+### 优化与修复（3）
+压缩（图片重采样+JPG 重编码）、画质增强（去噪/锐化/对比度）、修复（重写结构）
 
 ---
 
 ## 二、运行方式
 
 ### 安装版（推荐给他人使用）
-双击 `PdfKit-1.0.0.exe` → 选择目录 → 完成。默认装到 `%LOCALAPPDATA%\Programs\PdfKit`，**不需要管理员权限**。
+双击 `PdfKit-1.1.0.exe` → 选择目录 → 完成。默认装到 `%LOCALAPPDATA%\Programs\PdfKit`，**不需要管理员权限**。
 
 ### 绿色版（U 盘/内网分发）
 把 `dist\PdfKit` 整个文件夹复制到目标机器，双击 `PdfKit.exe`。
@@ -70,7 +73,7 @@ PDF 转图片（PNG/JPG，DPI 可调）、图片转 PDF（多图排序/纸张适
 ### 命令
 
 ```bash
-# 编译 + 测试（25 个用例）
+# 编译 + 测试（35 个用例）
 export JAVA_HOME="C:/dev/jdk-17.0.13"
 /c/dev/gradle-8.14/bin/gradle test
 
@@ -78,15 +81,15 @@ export JAVA_HOME="C:/dev/jdk-17.0.13"
 /c/dev/gradle-8.14/bin/gradle installDist
 
 # 出绿色版
-"$JAVA_HOME/bin/jpackage" --type app-image --name PdfKit --app-version 1.0.0 \
-  --input build/install/pdfkit/lib --main-jar pdfkit-1.0.0.jar \
+"$JAVA_HOME/bin/jpackage" --type app-image --name PdfKit --app-version 1.1.0 \
+  --input build/install/pdfkit/lib --main-jar pdfkit-1.1.0.jar \
   --main-class io.pdfkit.App --dest dist \
   --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m"
 
 # 出安装包（需 WiX 在 PATH）
 export PATH="/c/dev/wix314:$PATH"
-"$JAVA_HOME/bin/jpackage" --type exe --name PdfKit --app-version 1.0.0 \
-  --input build/install/pdfkit/lib --main-jar pdfkit-1.0.0.jar \
+"$JAVA_HOME/bin/jpackage" --type exe --name PdfKit --app-version 1.1.0 \
+  --input build/install/pdfkit/lib --main-jar pdfkit-1.1.0.jar \
   --main-class io.pdfkit.App --dest dist-installer \
   --win-menu --win-shortcut --win-dir-chooser \
   --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m"
@@ -109,25 +112,28 @@ pdfkit/
 │   │   ├── Err.java          带错误码的业务异常
 │   │   ├── Job.java          任务状态机
 │   │   ├── JobQueue.java     并发队列（默认 2 线程）+ 产物隔离
-│   │   └── Registry.java     能力注册表（46 项，新增能力只改这里）
-│   ├── ops/                  能力实现（按域分文件）
+│   │   └── Registry.java     能力注册表（60 项，新增能力只改这里）
+│   ├── ops/                  能力实现（15 个类）
 │   │   ├── OrganizeOps       合并/拆分/旋转/裁剪/重排/按章节拆
 │   │   ├── LayoutOps         N-up/按大小拆/叠加
+│   │   ├── LayoutPlusOps     海报分块/小册子拼版
 │   │   ├── EditOps           页码/水印/元数据/展平
-│   │   ├── EditPlusOps       印章/插图/反色/扫描件效果
+│   │   ├── EditPlusOps       印章/插图/页眉页脚/反色/扫描件效果
 │   │   ├── AttachOps         附件增删查
-│   │   ├── ConvertOps        PDF↔图片/转文本
-│   │   ├── SecureOps         加解密/净化/签名验证
+│   │   ├── AnnotOps          注释导出/清除/添加
+│   │   ├── ConvertOps        PDF↔图片/转文本/提取图片
+│   │   ├── ConvertPlusOps    转 Markdown/转 Word/多页 TIFF
+│   │   ├── SecureOps         加解密/净化/证书签名/签名验证
 │   │   ├── RedactOps         涂黑（栅格化真删除）
-│   │   ├── FormOps           表单读/填
+│   │   ├── FormOps           表单读/填/锁定
 │   │   ├── AnalyzeOps        信息/字体体检/结构探查
-│   │   ├── OptimizeOps       压缩/修复
-│   │   ├── FilterOps         按文本/尺寸筛选、删空白页
+│   │   ├── OptimizeOps       压缩/画质增强/修复
+│   │   ├── FilterOps         按文本/尺寸/图片筛选、删空白页
 │   │   └── BookmarkOps       自动书签/导入导出
 │   ├── ui/                   Swing + FlatLaf 界面
 │   └── util/                 字体、路径、日志、PDF 通用
 ├── src/main/resources/fonts/ 内置思源黑体（OFL）+ 许可证
-└── src/test/java/            25 个端到端用例
+└── src/test/java/            35 个端到端用例
 ```
 
 ### 加一个新功能
@@ -160,8 +166,11 @@ pdfkit/
 | 涂黑、反色、扫描件效果会把目标页转为图片 | 这是"彻底删除文字"的代价；这些页不可再搜索、体积变大 |
 | 自动书签对扫描件无效 | 无文本层，需先 OCR（本版未集成 OCR 引擎） |
 | 无 Office → PDF | 需要 Word COM 或内置 LibreOffice（+350 MB），本版未提供 |
-| 无 PDF → Word/Excel | 保版式还原属于商业库强项，本版只提供 PDF→文本 |
+| PDF → Word 不做像素级还原 | 只保证文字流、标题层级、段落可编辑；保版式属商业库强项 |
+| 表格转 Markdown 会丢列关系 | 无表格结构识别引擎，按纯文本行输出 |
+| 自签名证书 Adobe 提示「身份未知」 | 自签名不在 CA 信任链里；签名有效，商业场景请用 CA 证书 |
 | 签名验证只查结构覆盖 | 不校验证书链与信任根，正式场景请用 Adobe |
+| 无 OCR | tess4j + 中文语言包约 +50 MB，与体积目标冲突 |
 | 压缩对纯文字 PDF 收益有限 | 压缩主力是图片重采样，文字型文件本身已经很紧凑 |
 
 ---
@@ -174,4 +183,4 @@ pdfkit/
 - UI 主题 **FlatLaf 3.5.4**：Apache License 2.0
 - 加密/签名 **BouncyCastle 1.80**：MIT-style
 
-上游参考项目（`../engines/`）的许可与边界见 `../README.md`：Stirling-PDF 为 MIT，ToolKnit 为 PolyForm 非商用，PDFPatcher 为 AGPL + 附加条款。**本工程所有功能实现均为独立编写，未复制上述项目源码。**
+上游三个参考工程（Stirling-PDF / PDFPatcher / ToolKnit）的许可分别为 MIT、AGPL + 附加条款、PolyForm 非商用。**本工程所有功能实现均为独立编写，未复制上述项目的任何源码、UI 资源或文案**；其源码已从仓库移除，仅作为功能行为参考。
