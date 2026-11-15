@@ -38,7 +38,7 @@ public final class EditOps {
                     Param.num("start", "起始页", "1", "从第几页开始加"),
                     Param.num("startNo", "起始序号", "1", "第一页显示为几"),
                     Param.num("size", "字号", "10", "6-36"),
-                    Param.text("margin", "边距(mm)", "12", "距离纸张边缘"),
+                    Param.num("margin", "边距(mm)", "12", "距离纸张边缘"),
                     Param.text("pages", "作用页", "", "留空=全部页")
             ),
             ctx -> {

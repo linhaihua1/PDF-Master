@@ -70,6 +70,7 @@ public final class FormOps {
                     Param.bool("flatten", "填写后展平", false, "展平后不可再修改")
             ),
             ctx -> {
+                ctx.input(); // 先确认已选文件
                 String raw = ctx.str("values");
                 if (raw.isBlank()) {
                     throw new Err("ERR_BAD_PARAM", "请填写「字段名=值」，每行一个");

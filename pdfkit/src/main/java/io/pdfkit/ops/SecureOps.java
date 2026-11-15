@@ -216,19 +216,47 @@ public final class SecureOps {
                     int removed = 0;
                     var acroForm = doc.getDocumentCatalog().getAcroForm();
                     if (acroForm != null) {
+                        acroForm.setCacheFields(false);
                         List<org.apache.pdfbox.pdmodel.interactive.form.PDField> toRemove = new java.util.ArrayList<>();
                         for (var f : acroForm.getFieldTree()) {
                             if (f instanceof org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField) {
                                 toRemove.add(f);
                             }
                         }
+                        org.apache.pdfbox.cos.COSArray topFields = (org.apache.pdfbox.cos.COSArray)
+                                acroForm.getCOSObject().getDictionaryObject(org.apache.pdfbox.cos.COSName.FIELDS);
                         for (var f : toRemove) {
                             try {
-                                acroForm.getFields().remove(f);
+                                org.apache.pdfbox.cos.COSDictionary dict = f.getCOSObject();
+                                // 先把自己从父字段的 /Kids 里摘掉，再从表单顶层 /Fields 摘掉。
+                                // PDFBox 3 没有 removeField，只能走 COS 层。
+                                org.apache.pdfbox.cos.COSDictionary parent = (org.apache.pdfbox.cos.COSDictionary)
+                                        dict.getDictionaryObject(org.apache.pdfbox.cos.COSName.PARENT);
+                                if (parent != null) {
+                                    org.apache.pdfbox.cos.COSArray kids = (org.apache.pdfbox.cos.COSArray)
+                                            parent.getDictionaryObject(org.apache.pdfbox.cos.COSName.KIDS);
+                                    if (kids != null) {
+                                        kids.remove(dict);
+                                    }
+                                }
+                                if (topFields != null) {
+                                    topFields.remove(dict);
+                                }
                                 removed++;
                             } catch (Exception e) {
                                 Log.warn("移除签名字段失败：%s", e.getMessage());
                             }
+                        }
+                        // 畸形 PDF 里签名字段可能挂在非标准位置，仍有残留就清空字段表
+                        int left = 0;
+                        for (var f : acroForm.getFieldTree()) {
+                            if (f instanceof org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField) {
+                                left++;
+                            }
+                        }
+                        if (left > 0) {
+                            acroForm.getCOSObject().removeItem(org.apache.pdfbox.cos.COSName.FIELDS);
+                            removed += left;
                         }
                     }
                     doc.getDocumentCatalog().getCOSObject().removeItem(org.apache.pdfbox.cos.COSName.PERMS);

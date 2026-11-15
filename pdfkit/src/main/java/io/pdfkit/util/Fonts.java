@@ -20,7 +20,26 @@ import java.util.List;
  */
 public final class Fonts {
 
-    private static final String BUNDLED = "/fonts/NotoSansSC-Regular.otf";
+    /**
+     * 内置思源黑体 Regular（OFL 许可），随安装包分发，目标机无需装任何字体。
+     *
+     * <p>三条硬要求，改字体前务必先跑 RoundTrip 校验：
+     * <ol>
+     *   <li>必须是 glyf 轮廓的 TrueType。PDFBox 的 PDType0Font 不支持 CFF 轮廓的 OTF，
+     *       加载会直接失败并回退到系统字体。</li>
+     *   <li>cmap 里不能有部首区（U+2E80-2FDF）/ 兼容汉字区（U+F900-FAFF）的重复映射。
+     *       Noto 原始可变字体把「页」的部首形码位也映射到同一个字形，PDFBox 生成
+     *       ToUnicode 时按 GID 反查会挑到部首码位，结果是字形正确但复制、搜索、
+     *       文本提取全部错误（提取出 U+2EDA 而不是 U+9875）。</li>
+     *   <li>不要用 hasGlyph() 判断本字体是否缺字。PDFBox 对 embedSubset=true 加载的
+     *       PDType0Font，hasGlyph(int) 把入参当 CID/GID 而非 Unicode 码位，只有码位
+     *       数值小于字形总数时才返回 true，结论完全不可信。判定缺字只能用「写入后
+     *       用 PDFTextStripper 提取比对」的方式。</li>
+     * </ol>
+     * 当前文件由 NotoSansSC-VF 实例化为 wght=400 并定向子集而成，
+     * 构建步骤见 README「更换内置字体」，脚本为 scripts/build-font.py。
+     */
+    private static final String BUNDLED = "/fonts/NotoSansSC-Regular.ttf";
 
     /** 系统可用的中文 TTF（ttc 不在此列，PDFBox 直接 load 不了 ttc 单字体） */
     private static final List<String> SYSTEM_TTF = List.of(

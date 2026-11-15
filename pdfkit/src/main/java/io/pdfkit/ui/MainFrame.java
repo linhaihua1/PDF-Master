@@ -180,22 +180,27 @@ public final class MainFrame extends JFrame {
             }
         });
         JScrollPane jobScroll = new JScrollPane(jobTable);
-        jobPanel.add(jobScroll, BorderLayout.CENTER);
+        jobScroll.setBorder(Ui.section("任务队列"));
+        jobScroll.setMinimumSize(new Dimension(240, 110));
 
-        JPanel bottomRow = new JPanel(new BorderLayout(8, 0));
-        bottomRow.setOpaque(false);
         resultArea.setEditable(false);
         resultArea.setFont(new Font("Consolas", Font.PLAIN, 12));
         resultArea.setBackground(new Color(250, 250, 252));
         JScrollPane resultScroll = new JScrollPane(resultArea);
         resultScroll.setBorder(Ui.section("执行结果（分析/预览类功能显示在这里）"));
-        resultScroll.setPreferredSize(new Dimension(400, 130));
-        bottomRow.add(resultScroll, BorderLayout.CENTER);
-        jobPanel.add(bottomRow, BorderLayout.SOUTH);
+        resultScroll.setMinimumSize(new Dimension(240, 70));
+
+        // 任务表与结果区用可拖动分隔，避免结果区按首选高度把任务表压成一条线
+        JSplitPane jobSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jobScroll, resultScroll);
+        jobSplit.setDividerLocation(150);
+        jobSplit.setResizeWeight(0.55);
+        jobSplit.setBorder(null);
+        jobPanel.add(jobSplit, BorderLayout.CENTER);
 
         JSplitPane main = new JSplitPane(JSplitPane.VERTICAL_SPLIT, top, jobPanel);
-        main.setDividerLocation(400);
-        main.setResizeWeight(0.62);
+        // 330 而不是 400：780 高的窗口下要同时留住任务表和结果区
+        main.setDividerLocation(330);
+        main.setResizeWeight(0.5);
         main.setBorder(null);
         return main;
     }

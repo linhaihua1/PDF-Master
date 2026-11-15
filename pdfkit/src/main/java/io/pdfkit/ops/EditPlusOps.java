@@ -126,6 +126,7 @@ public final class EditPlusOps {
                     Param.text("pages", "作用页", "1", "留空=全部页")
             ),
             ctx -> {
+                ctx.input(); // 先确认已选文件
                 String f = ctx.str("file");
                 if (f.isBlank()) {
                     throw new Err("ERR_BAD_PARAM", "请填写图片路径");

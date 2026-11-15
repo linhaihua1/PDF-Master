@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'io.pdfkit'
-version = '1.1.0'
+version = '1.2.0'
 
 java {
     toolchain { languageVersion = JavaLanguageVersion.of(17) }
@@ -62,4 +62,7 @@ jar {
 test {
     useJUnitPlatform()
     systemProperty 'java.awt.headless', 'false'
+    // 与安装包一致的口径：NFR-03 要求 500 页峰值 ≤1.2 GB，
+    // 给 1.5 GB 上限，让超限表现为断言失败而不是 OOM，便于定位真实峰值
+    maxHeapSize = '1536m'
 }

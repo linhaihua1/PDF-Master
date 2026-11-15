@@ -4,6 +4,7 @@ import io.pdfkit.core.Capability;
 import io.pdfkit.core.Ctx;
 import io.pdfkit.core.Err;
 import io.pdfkit.core.Param;
+import io.pdfkit.util.Log;
 import io.pdfkit.util.PdfUtil;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentNameDictionary;
@@ -12,6 +13,7 @@ import org.apache.pdfbox.pdmodel.common.PDNameTreeNode;
 import org.apache.pdfbox.pdmodel.common.filespecification.PDComplexFileSpecification;
 import org.apache.pdfbox.pdmodel.common.filespecification.PDEmbeddedFile;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -97,6 +99,7 @@ public final class AttachOps {
             "把一个外部文件嵌入 PDF。附件随 PDF 一起传输，常见于合同、发票的佐证材料。",
             List.of(Param.text("file", "要附加的文件路径", "", "例如 C:\\资料\\明细.xlsx")),
             ctx -> {
+                ctx.input(); // 先确认已选文件
                 String p = ctx.str("file");
                 if (p.isBlank()) {
                     throw new Err("ERR_BAD_PARAM", "请填写要附加的文件完整路径");
@@ -161,9 +164,17 @@ public final class AttachOps {
                         if (ef == null) {
                             continue;
                         }
-                        Path target = dir.resolve(e.getKey().replaceAll("[\\\\/:*?\"<>|]", "_"));
+                        // 附件名来自 PDF 内部，完全由文件作者控制：必须清洗后再落盘
+                        Path target = dir.resolve(sanitizeName(e.getKey(), n + 1)).normalize();
+                        if (!target.startsWith(dir.normalize())) {
+                            target = dir.resolve("attachment_" + (n + 1)).normalize();
+                        }
                         try (InputStream in = ef.createInputStream()) {
                             Files.copy(in, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        } catch (IOException ex) {
+                            // 单个附件写失败（名字非法、权限不足）不应让整批导出中断
+                            Log.warn("附件 %s 导出失败：%s", e.getKey(), ex.getMessage());
+                            continue;
                         }
                         ctx.addOutput(target);
                         n++;
@@ -174,4 +185,43 @@ public final class AttachOps {
                     ctx.report(100, "已导出 " + n + " 个附件到 " + dir.getFileName());
                 }
             });
+
+    /**
+     * 清洗 PDF 内嵌附件名：去掉路径分隔符、控制字符、Windows 非法字符与尾部点空格。
+     * 附件名可被文件作者任意构造（含 {@code ../../x}、纯 {@code ..}、超长名），
+     * 不清洗会导致写出目录或整批导出失败。
+     */
+    private static String sanitizeName(String raw, int seq) {
+        String s = raw == null ? "" : raw;
+        s = s.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_").trim();
+        s = s.replaceAll("[. ]+$", "");
+        if (s.isEmpty() || s.equals(".") || s.equals("..")) {
+            return "attachment_" + seq;
+        }
+        // Windows 保留设备名（CON/PRN/AUX/NUL/COM1-9/LPT1-9）不能作为文件名，否则写入时报「参数错误」
+        String stem = s;
+        int firstDot = s.indexOf('.');
+        if (firstDot > 0) {
+            stem = s.substring(0, firstDot);
+        }
+        if (WIN_RESERVED.contains(stem.toUpperCase(java.util.Locale.ROOT))) {
+            s = "_" + s;
+        }
+        if (s.length() > 120) {
+            String ext = "";
+            int dot = s.lastIndexOf('.');
+            if (dot > 0 && s.length() - dot <= 12) {
+                ext = s.substring(dot);
+                s = s.substring(0, dot);
+            }
+            s = s.substring(0, Math.min(s.length(), 100)) + ext;
+        }
+        return s;
+    }
+
+    /** Windows 上不可用作文件名的设备名。 */
+    private static final java.util.Set<String> WIN_RESERVED = java.util.Set.of(
+            "CON", "PRN", "AUX", "NUL",
+            "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+            "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9");
 }

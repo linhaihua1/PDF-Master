@@ -15,7 +15,10 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
@@ -88,7 +91,8 @@ public final class BookmarkOps {
                     }
                     if (titles.isEmpty()) {
                         throw new Err("ERR_NO_TITLE",
-                                String.format("没有识别到标题。正文基准字号 %.1f pt，阈值 %.1f pt。可把「字号阈值」调低（如 100%），或关闭「只识别加粗」。",
+                                String.format("没有识别到标题。正文基准字号 %.1f pt，阈值 %.1f pt。"
+                                                + "可把「字号阈值」调到 100 或更低，或关闭「只识别加粗」。",
                                         base, threshold));
                     }
 
@@ -166,12 +170,12 @@ public final class BookmarkOps {
                         throw new Err("ERR_NO_BOOKMARK", "这个 PDF 没有书签");
                     }
                     ctx.report(30, "读取书签树");
-                    Document xml = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
+                    Document xml = newSafeBuilder().newDocument();
                     Element root = xml.createElement("bookmarks");
                     xml.appendChild(root);
                     int count = appendItems(xml, root, outline.getFirstChild(), doc, 0);
                     Path out = ctx.outDerived("_书签", ".xml");
-                    Transformer t = TransformerFactory.newInstance().newTransformer();
+                    Transformer t = safeTransformerFactory().newTransformer();
                     t.setOutputProperty(OutputKeys.INDENT, "yes");
                     t.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
                     t.transform(new DOMSource(xml), new StreamResult(Files.newBufferedWriter(out, StandardCharsets.UTF_8)));
@@ -195,13 +199,22 @@ public final class BookmarkOps {
                 if (!Files.isReadable(xmlPath)) {
                     throw new Err("ERR_NO_FILE", "找不到书签 XML：" + xmlPath);
                 }
+                // 书签 XML 只有几百 KB，超过 20 MB 几乎可以确定是恶意构造，直接拒绝避免内存耗尽
+                try {
+                    if (Files.size(xmlPath) > 20L * 1024 * 1024) {
+                        throw new Err("ERR_BAD_XML", "书签 XML 超过 20 MB，已拒绝解析");
+                    }
+                } catch (IOException ignored) {
+                    // 取不到大小就按正常流程继续，解析阶段还有兜底
+                }
                 try (PDDocument doc = PdfUtil.load(ctx.input(), ctx.str("password"))) {
-                    Document xml = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(xmlPath.toFile());
+                    Document xml = newSafeBuilder().parse(xmlPath.toFile());
                     Element root = xml.getDocumentElement();
                     PDDocumentOutline outline = new PDDocumentOutline();
                     doc.getDocumentCatalog().setDocumentOutline(outline);
                     int total = doc.getNumberOfPages();
-                    int count = readItems(root, outline, doc, total);                    if (count == 0) {
+                    int count = readItems(root, outline, doc, total, 0);
+                    if (count == 0) {
                         throw new Err("ERR_BAD_XML", "XML 里没有可用的书签条目");
                     }
                     Path out = ctx.outDerived("_导入书签", ".pdf");
@@ -302,7 +315,11 @@ public final class BookmarkOps {
 
     private static int readItems(Element parent,
                                  org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode outlineParent,
-                                 PDDocument doc, int totalPages) {
+                                 PDDocument doc, int totalPages, int depth) {
+        // 恶意 XML 可以嵌套到几十万层把栈打爆，这里设上限
+        if (depth > 64) {
+            throw new Err("ERR_BAD_XML", "书签层级超过 64 层，疑似异常数据，已中止");
+        }
         int count = 0;
         NodeList children = parent.getChildNodes();
         for (int i = 0; i < children.getLength(); i++) {
@@ -328,8 +345,43 @@ public final class BookmarkOps {
             dest.setPage(doc.getPage(page - 1));
             item.setDestination(dest);
             outlineParent.addLast(item);
-            count += 1 + readItems(el, item, doc, totalPages);
+            count += 1 + readItems(el, item, doc, totalPages, depth + 1);
         }
         return count;
+    }
+
+    /**
+     * 加固后的 XML 解析器：禁用 DOCTYPE 与外部实体。
+     *
+     * <p>书签 XML 属于用户可替换的输入，若不禁用外部实体，恶意文件可以用
+     * {@code <!ENTITY x SYSTEM "file:///C:/...">} 读取本机文件并写进书签标题，
+     * 或用 Billion Laughs 把内存撑爆。
+     */
+    private static DocumentBuilder newSafeBuilder() {
+        try {
+            DocumentBuilderFactory f = DocumentBuilderFactory.newInstance();
+            f.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            f.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            f.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            f.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+            f.setXIncludeAware(false);
+            f.setExpandEntityReferences(false);
+            f.setNamespaceAware(false);
+            return f.newDocumentBuilder();
+        } catch (ParserConfigurationException e) {
+            throw new Err("ERR_BAD_XML", "无法初始化 XML 解析器：" + e.getMessage(), e);
+        }
+    }
+
+    /** 导出侧也关掉外部 DTD 与样式表访问，避免 XSLT 注入面。 */
+    private static TransformerFactory safeTransformerFactory() {
+        TransformerFactory tf = TransformerFactory.newInstance();
+        try {
+            tf.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+            tf.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+        } catch (IllegalArgumentException ignored) {
+            // 某些实现不支持该属性，忽略即可（导出方向无外部输入）
+        }
+        return tf;
     }
 }

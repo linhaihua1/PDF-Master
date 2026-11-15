@@ -29,8 +29,11 @@ public final class OrganizeOps {
             List.of(Param.bool("keepBookmark", "保留书签", true, "为每个源文件生成一级书签")),
             ctx -> {
                 List<Path> inputs = ctx.inputs();
+                if (inputs.isEmpty()) {
+                    throw new Err("ERR_NO_INPUT", "请先选择要合并的 PDF 文件");
+                }
                 if (inputs.size() < 2) {
-                    throw new Err("ERR_NEED_TWO", "合并至少需要 2 个 PDF 文件");
+                    throw new Err("ERR_NEED_TWO", "合并至少需要 2 个 PDF 文件，当前只选了 1 个");
                 }
                 Path out = ctx.outDerived("_合并", ".pdf");
                 boolean keepBookmark = ctx.bool("keepBookmark", true);
@@ -159,6 +162,7 @@ public final class OrganizeOps {
                     Param.text("pages", "作用页", "", "留空=全部页")
             ),
             ctx -> {
+                ctx.input(); // 先确认已选文件，再校验参数，避免用户没选文件却看到参数报错
                 float mm = 72f / 25.4f;
                 float top = ctx.intVal("top", 0) * mm;
                 float bottom = ctx.intVal("bottom", 0) * mm;
@@ -195,6 +199,7 @@ public final class OrganizeOps {
             "删除指定页面，其余页面保持原顺序。",
             List.of(Param.text("pages", "要删除的页", "", "必填，如 2,5-7")),
             ctx -> {
+                ctx.input(); // 先确认已选文件
                 String spec = ctx.str("pages");
                 if (spec.isBlank()) {
                     throw new Err("ERR_BAD_PARAM", "请填写要删除的页码");

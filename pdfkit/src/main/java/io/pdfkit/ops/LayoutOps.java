@@ -203,6 +203,9 @@ public final class LayoutOps {
                     Param.num("opacity", "叠加层透明度(%)", "100", "10-100")
             ),
             ctx -> {
+                if (ctx.inputs().isEmpty()) {
+                    throw new Err("ERR_NO_INPUT", "请先选择要叠加的 PDF 文件");
+                }
                 if (ctx.inputs().size() < 2) {
                     throw new Err("ERR_NEED_TWO", "叠加需要 2 个文件：第 1 个是底稿，第 2 个是叠加层");
                 }

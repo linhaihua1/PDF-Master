@@ -31,6 +31,7 @@ public final class FilterOps {
                     Param.bool("caseSensitive", "区分大小写", false, "")
             ),
             ctx -> {
+                ctx.input(); // 先确认已选文件
                 String pat = ctx.str("pattern");
                 if (pat.isBlank()) {
                     throw new Err("ERR_BAD_PARAM", "请填写要筛选的关键词");
