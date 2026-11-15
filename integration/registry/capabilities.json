@@ -1,0 +1,2294 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-11-15T04:58:04.574Z",
+  "sources": {
+    "stirling": "engines/stirling-pdf (Spring Boot, 99 个 REST 端点)",
+    "patcher": "engines/pdfpatcher (C#/.NET, 经 patcher-cli 包装)",
+    "native": "engines/toolknit-desktop (Tauri 前端内置工具)"
+  },
+  "engines": [
+    {
+      "id": "stirling",
+      "name": "Stirling-PDF",
+      "runtime": "Java 17+ / Spring Boot",
+      "upstream": "https://github.com/linhaihua1/Stirling-PDF",
+      "baseUrl": "http://127.0.0.1:8080",
+      "probe": {
+        "type": "http",
+        "path": "/api/v1/info/status"
+      },
+      "note": "功能主力：转换、OCR、压缩、签名、涂黑、管线自动化"
+    },
+    {
+      "id": "patcher",
+      "name": "PDFPatcher",
+      "upstream": "https://github.com/linhaihua1/PDFPatcher",
+      "runtime": ".NET Framework 4.0+ (Windows)",
+      "entry": "integration/patcher-cli/bin/PDFPatcher.Cli.exe",
+      "probe": {
+        "type": "file-exists"
+      }
+    },
+    {
+      "id": "native",
+      "name": "ToolKnit 内置",
+      "runtime": "浏览器 / Tauri WebView",
+      "entry": "engines/toolknit-desktop/toolknit-desktop/src/features",
+      "probe": {
+        "type": "always"
+      }
+    }
+  ],
+  "stats": {
+    "total": 124,
+    "byEngine": {
+      "stirling": 99,
+      "patcher": 8,
+      "native": 17
+    },
+    "byCategory": {
+      "analyze": 10,
+      "other": 11,
+      "convert": 20,
+      "organize": 22,
+      "filter": 6,
+      "edit": 31,
+      "automation": 1,
+      "security": 17,
+      "bookmark": 3,
+      "extract": 1,
+      "optimize": 2
+    }
+  },
+  "capabilities": [
+    {
+      "engine": "stirling",
+      "id": "stirling.analyze-pdf.page-count",
+      "title": "页数统计",
+      "desc": "",
+      "category": "analyze",
+      "method": "POST",
+      "endpoint": "/api/v1/analysis/page-count",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "json"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.analyze-pdf.basic-info",
+      "title": "基础信息",
+      "desc": "",
+      "category": "analyze",
+      "method": "POST",
+      "endpoint": "/api/v1/analysis/basic-info",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "json"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.analyze-pdf.document-properties",
+      "title": "文档属性",
+      "desc": "",
+      "category": "analyze",
+      "method": "POST",
+      "endpoint": "/api/v1/analysis/document-properties",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "json"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.analyze-pdf.page-dimensions",
+      "title": "页面尺寸",
+      "desc": "",
+      "category": "analyze",
+      "method": "POST",
+      "endpoint": "/api/v1/analysis/page-dimensions",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "json"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.analyze-pdf.form-fields",
+      "title": "表单字段",
+      "desc": "",
+      "category": "analyze",
+      "method": "POST",
+      "endpoint": "/api/v1/analysis/form-fields",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "json"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.analyze-pdf.annotation-info",
+      "title": "注释信息",
+      "desc": "",
+      "category": "analyze",
+      "method": "POST",
+      "endpoint": "/api/v1/analysis/annotation-info",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "json"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.analyze-pdf.font-info",
+      "title": "字体信息",
+      "desc": "",
+      "category": "analyze",
+      "method": "POST",
+      "endpoint": "/api/v1/analysis/font-info",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "json"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.analyze-pdf.security-info",
+      "title": "加密信息",
+      "desc": "",
+      "category": "analyze",
+      "method": "POST",
+      "endpoint": "/api/v1/analysis/security-info",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "json"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.booklet-imposition",
+      "title": "小册子拼版",
+      "desc": "",
+      "category": "other",
+      "method": "POST",
+      "endpoint": "/booklet-imposition",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.ebook-to-pdf.ebook-pdf",
+      "title": "电子书转 PDF",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/ebook/pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.convert-img.pdf-img",
+      "title": "PDF 转图片",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/pdf/img",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "zip"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.convert-img.img-pdf",
+      "title": "图片转 PDF",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/img/pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.convert-img.cbz-pdf",
+      "title": "CBZ 转 PDF",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/cbz/pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.convert-img.pdf-cbz",
+      "title": "PDF 转 CBZ",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/pdf/cbz",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.convert-img.cbr-pdf",
+      "title": "CBR 转 PDF",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/cbr/pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.convert-img.pdf-cbr",
+      "title": "PDF 转 CBR",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/pdf/cbr",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.convert.file-pdf",
+      "title": "Office 转 PDF",
+      "desc": "在不同格式之间转换文件",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/file/pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf",
+      "note": "依赖内置 LibreOffice，首次转换较慢"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.convert-to-epub.pdf-epub",
+      "title": "PDF 转 EPUB",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/pdf/epub",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "epub"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.convert-to-excel.pdf-xlsx",
+      "title": "PDF 转 Excel",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/pdf/xlsx",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "xlsx"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.pdf-to-video.pdf-video",
+      "title": "PDF 转视频",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/pdf/video",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.extract-csv.pdf-csv",
+      "title": "PDF 转 CSV",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/pdf/csv",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "csv"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.vector-export.vector-pdf",
+      "title": "矢量图转 PDF",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/vector/pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.vector-export.pdf-vector",
+      "title": "PDF 转矢量图",
+      "desc": "",
+      "category": "convert",
+      "method": "POST",
+      "endpoint": "/api/v1/convert/pdf/vector",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.crop.crop",
+      "title": "裁剪",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/crop",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.edit-table-of-contents.extract-bookmarks",
+      "title": "导出书签",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/extract-bookmarks",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "xml"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.edit-table-of-contents.edit-table-of-contents",
+      "title": "编辑目录",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/edit-table-of-contents",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.filter.filter-contains-text",
+      "title": "按文本筛选",
+      "desc": "",
+      "category": "filter",
+      "method": "POST",
+      "endpoint": "/api/v1/filter/filter-contains-text",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.filter.filter-contains-image",
+      "title": "按图片筛选",
+      "desc": "",
+      "category": "filter",
+      "method": "POST",
+      "endpoint": "/api/v1/filter/filter-contains-image",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.filter.filter-page-count",
+      "title": "按页数筛选",
+      "desc": "",
+      "category": "filter",
+      "method": "POST",
+      "endpoint": "/api/v1/filter/filter-page-count",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.filter.filter-page-size",
+      "title": "按页面尺寸筛选",
+      "desc": "",
+      "category": "filter",
+      "method": "POST",
+      "endpoint": "/api/v1/filter/filter-page-size",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.filter.filter-file-size",
+      "title": "按文件大小筛选",
+      "desc": "",
+      "category": "filter",
+      "method": "POST",
+      "endpoint": "/api/v1/filter/filter-file-size",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.filter.filter-page-rotation",
+      "title": "按页面方向筛选",
+      "desc": "",
+      "category": "filter",
+      "method": "POST",
+      "endpoint": "/api/v1/filter/filter-page-rotation",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.form-fill.fields",
+      "title": "读取表单字段",
+      "desc": "",
+      "category": "other",
+      "method": "POST",
+      "endpoint": "/fields",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.form-fill.fields-with-coordinates",
+      "title": "带坐标字段",
+      "desc": "",
+      "category": "other",
+      "method": "POST",
+      "endpoint": "/fields-with-coordinates",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.form-fill.extract-csv",
+      "title": "表单导出 CSV",
+      "desc": "",
+      "category": "other",
+      "method": "POST",
+      "endpoint": "/extract-csv",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.form-fill.extract-xlsx",
+      "title": "表单导出 Excel",
+      "desc": "",
+      "category": "other",
+      "method": "POST",
+      "endpoint": "/extract-xlsx",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.form-fill.add-fields",
+      "title": "添加字段",
+      "desc": "",
+      "category": "other",
+      "method": "POST",
+      "endpoint": "/add-fields",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.form-fill.edit-fields",
+      "title": "编辑字段",
+      "desc": "",
+      "category": "other",
+      "method": "POST",
+      "endpoint": "/edit-fields",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.form-fill.modify-fields",
+      "title": "修改字段",
+      "desc": "",
+      "category": "other",
+      "method": "POST",
+      "endpoint": "/modify-fields",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.form-fill.delete-fields",
+      "title": "删除字段",
+      "desc": "",
+      "category": "other",
+      "method": "POST",
+      "endpoint": "/delete-fields",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.form-fill.fill",
+      "title": "填充表单",
+      "desc": "",
+      "category": "other",
+      "method": "POST",
+      "endpoint": "/fill",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.merge.merge-pdfs",
+      "title": "合并",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/merge-pdfs",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "sortType",
+          "type": "enum",
+          "values": [
+            "orderProvided",
+            "byFileName",
+            "byDateModified"
+          ],
+          "default": "orderProvided"
+        }
+      ],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.add-comments.add-comments",
+      "title": "添加注释",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/add-comments",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": false,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.attachments.add-attachments",
+      "title": "添加附件",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/add-attachments",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": false,
+          "required": true
+        },
+        {
+          "field": "attachments",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.attachments.extract-attachments",
+      "title": "导出附件",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/extract-attachments",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "zip"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.attachments.list-attachments",
+      "title": "列出附件",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/list-attachments",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "json"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.attachments.rename-attachment",
+      "title": "重命名附件",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/rename-attachment",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.attachments.delete-attachment",
+      "title": "删除附件",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/delete-attachment",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.attachments.extract-single-attachment",
+      "title": "导出单个附件",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/extract-single-attachment",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.attachments.batch-process-attachments",
+      "title": "批量处理附件",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/batch-process-attachments",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.auto-rename.auto-rename",
+      "title": "智能重命名",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/auto-rename",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.auto-rotate.auto-rotate-pdf",
+      "title": "自动纠偏",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/auto-rotate-pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.auto-split.auto-split-pdf",
+      "title": "自动拆分",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/auto-split-pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.blank-page.remove-blanks",
+      "title": "删除空白页",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/remove-blanks",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.compress",
+      "title": "压缩",
+      "desc": "压缩 PDF 以减小文件大小。",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/compress-pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.decompress.decompress-pdf",
+      "title": "解压 PDF",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/decompress-pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.extract-image-scans.extract-image-scans",
+      "title": "提取扫描图像",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/extract-image-scans",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.extract-images",
+      "title": "提取图像",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/extract-images",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "zip"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.flatten",
+      "title": "展平",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/flatten",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.metadata.update-metadata",
+      "title": "修改元数据",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/update-metadata",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.ocr",
+      "title": "OCR/扫描清理",
+      "desc": "清理和识别 PDF 中的图像文本，并将其转换为可编辑文本。",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/ocr-pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.add-image",
+      "title": "添加图像",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/add-image",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": false,
+          "required": true
+        },
+        {
+          "field": "imageFile",
+          "multiple": false,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.add-page-numbers",
+      "title": "添加页码",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/add-page-numbers",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.portfolio.create-portfolio",
+      "title": "创建组合文档",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/create-portfolio",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.portfolio.flatten-portfolio",
+      "title": "扁平化组合文档",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/flatten-portfolio",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.remove-images.remove-image-pdf",
+      "title": "移除图片",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/remove-image-pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.repair",
+      "title": "修复",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/repair",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.replace-invert.replace-invert-pdf",
+      "title": "替换/反色",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/replace-invert-pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.scanner-effect.scanner-effect",
+      "title": "扫描件效果",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/scanner-effect",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.stamp.add-stamp",
+      "title": "添加印章",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/add-stamp",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": false,
+          "required": true
+        },
+        {
+          "field": "stampImage",
+          "multiple": false,
+          "required": false
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.unlock-pdf-forms",
+      "title": "移除表单字段只读属性",
+      "desc": "",
+      "category": "edit",
+      "method": "POST",
+      "endpoint": "/api/v1/misc/unlock-pdf-forms",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.multi-tool.multi-page-layout",
+      "title": "多页排版",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/multi-page-layout",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "pagesPerSheet",
+          "type": "int",
+          "default": 2
+        },
+        {
+          "name": "addBorder",
+          "type": "bool",
+          "default": false
+        }
+      ],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.overlay.overlay-pdfs",
+      "title": "叠加文档",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/overlay-pdfs",
+      "files": [
+        {
+          "field": "baseFile",
+          "multiple": false,
+          "required": true
+        },
+        {
+          "field": "overlayFiles",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "overlayPosition",
+          "type": "enum",
+          "values": [
+            "0",
+            "1",
+            "2"
+          ],
+          "default": "0"
+        }
+      ],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.pipeline",
+      "title": "流水线",
+      "desc": "",
+      "category": "automation",
+      "method": "POST",
+      "endpoint": "/api/v1/pipeline/handleData",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.poster-pdf.split-for-poster-print",
+      "title": "海报分块打印",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/split-for-poster-print",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.page-ops.remove-pages",
+      "title": "删除页面",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/remove-pages",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.page-ops.rearrange-pages",
+      "title": "重排页面",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/rearrange-pages",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.rotate.rotate-pdf",
+      "title": "旋转",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/rotate-pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.scale.scale-pages",
+      "title": "缩放页面",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/scale-pages",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.cert-sign",
+      "title": "证书签名",
+      "desc": "",
+      "category": "other",
+      "method": "POST",
+      "endpoint": "/cert-sign",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.password.remove-password",
+      "title": "移除密码",
+      "desc": "",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/remove-password",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.password.add-password",
+      "title": "添加密码",
+      "desc": "",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/add-password",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.password.prepare-pdf-session",
+      "title": "准备加密会话",
+      "desc": "",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/prepare-pdf-session",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.password.restore-pdf-protection",
+      "title": "恢复加密保护",
+      "desc": "",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/restore-pdf-protection",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.redact.redact",
+      "title": "手动涂黑",
+      "desc": "",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/redact",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.redact.auto-redact",
+      "title": "自动涂黑",
+      "desc": "",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/auto-redact",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.redact.redact-execute",
+      "title": "执行涂黑",
+      "desc": "",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/redact-execute",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.remove-cert-sign.remove-cert-sign",
+      "title": "移除证书签名",
+      "desc": "",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/remove-cert-sign",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.sanitize.sanitize-pdf",
+      "title": "净化 PDF",
+      "desc": "移除 PDF 文件中的潜在有害元素。",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/sanitize-pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.timestamp.timestamp-pdf",
+      "title": "时间戳",
+      "desc": "",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/timestamp-pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.validate-compliance.validate-compliance",
+      "title": "合规校验",
+      "desc": "",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/validate-compliance",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.validate-signature.validate-signature",
+      "title": "验证签名",
+      "desc": "",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/validate-signature",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.verify-pdf.verify-pdf",
+      "title": "校验 PDF",
+      "desc": "",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/verify-pdf",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.watermark.add-watermark",
+      "title": "添加水印",
+      "desc": "向 PDF 添加文本或图像水印",
+      "category": "security",
+      "method": "POST",
+      "endpoint": "/api/v1/security/add-watermark",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.split-pdf-by-chapters.split-pdf-by-chapters",
+      "title": "按章节拆分",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/split-pdf-by-chapters",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "zip"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.split-by-sections.split-pdf-by-sections",
+      "title": "按分节符拆分",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/split-pdf-by-sections",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.split-by-size.split-by-size-or-count",
+      "title": "按大小/数量拆分",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/split-by-size-or-count",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "zip"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.split.split-pages",
+      "title": "拆分",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/split-pages",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "zip"
+    },
+    {
+      "engine": "stirling",
+      "id": "stirling.single-page.pdf-to-single-page",
+      "title": "多页拼单页",
+      "desc": "",
+      "category": "organize",
+      "method": "POST",
+      "endpoint": "/api/v1/general/pdf-to-single-page",
+      "files": [
+        {
+          "field": "fileInput",
+          "multiple": true,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "pdf"
+    },
+    {
+      "engine": "patcher",
+      "id": "patcher.auto-bookmark",
+      "title": "自动生成书签",
+      "desc": "按字号/字体/文本规则识别标题层级，批量生成中文 PDF 书签，支持正则与过滤器链。",
+      "category": "bookmark",
+      "command": "auto-bookmark",
+      "files": [
+        {
+          "field": "file",
+          "multiple": false,
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "levelRule",
+          "type": "string",
+          "desc": "标题层级判定规则，如 font-size>=16:1;>=13:2"
+        },
+        {
+          "name": "titlePattern",
+          "type": "string",
+          "desc": "标题文本正则，默认匹配章节编号"
+        },
+        {
+          "name": "maxLevel",
+          "type": "int",
+          "default": 6
+        }
+      ],
+      "output": "pdf",
+      "fallback": "stirling.add-page-numbers（仅页码，不能生成书签）",
+      "unique": true
+    },
+    {
+      "engine": "patcher",
+      "id": "patcher.bookmark-export",
+      "title": "导出书签",
+      "desc": "把 PDF 书签导出为 XML/文本，可再导入其他文档，支持页码偏移修正。",
+      "category": "bookmark",
+      "command": "bookmark-export",
+      "files": [
+        {
+          "field": "file",
+          "multiple": false,
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "format",
+          "type": "enum",
+          "values": [
+            "xml",
+            "text"
+          ],
+          "default": "xml"
+        }
+      ],
+      "output": "xml",
+      "fallback": "stirling.extract-bookmarks",
+      "unique": false
+    },
+    {
+      "engine": "patcher",
+      "id": "patcher.bookmark-import",
+      "title": "导入书签",
+      "desc": "从 XML/文本批量写入书签，支持层级、页码偏移、样式（粗体/斜体）保留。",
+      "category": "bookmark",
+      "command": "bookmark-import",
+      "files": [
+        {
+          "field": "file",
+          "multiple": false,
+          "required": true
+        },
+        {
+          "field": "bookmarkFile",
+          "multiple": false,
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "pageOffset",
+          "type": "int",
+          "default": 0
+        }
+      ],
+      "output": "pdf",
+      "fallback": "stirling.edit-table-of-contents",
+      "unique": false
+    },
+    {
+      "engine": "patcher",
+      "id": "patcher.font-report",
+      "title": "字体嵌入体检",
+      "desc": "列出每个字体是否嵌入、子集化、编码类型，定位打印/跨设备乱码根因。",
+      "category": "analyze",
+      "command": "font-report",
+      "files": [
+        {
+          "field": "file",
+          "multiple": false,
+          "required": true
+        }
+      ],
+      "options": [],
+      "output": "json",
+      "fallback": "stirling.analyze-pdf.font-info",
+      "unique": false
+    },
+    {
+      "engine": "patcher",
+      "id": "patcher.extract-images-raw",
+      "title": "提取原始图片",
+      "desc": "按文档内真实分辨率与原始编码（JPEG/JPX/PNG）导出图片，不重采样。",
+      "category": "extract",
+      "command": "extract-images",
+      "files": [
+        {
+          "field": "file",
+          "multiple": false,
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "minWidth",
+          "type": "int",
+          "default": 0
+        },
+        {
+          "name": "minHeight",
+          "type": "int",
+          "default": 0
+        }
+      ],
+      "output": "zip",
+      "fallback": "stirling.extract-images",
+      "unique": false
+    },
+    {
+      "engine": "patcher",
+      "id": "patcher.inspect-structure",
+      "title": "文档结构探查",
+      "desc": "导出对象树、内容流、页面资源与可疑标记，用于定位损坏、异常体积与排版错乱。",
+      "category": "analyze",
+      "command": "inspect",
+      "files": [
+        {
+          "field": "file",
+          "multiple": false,
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "depth",
+          "type": "int",
+          "default": 3
+        }
+      ],
+      "output": "json",
+      "fallback": "stirling.analyze-pdf.basic-info",
+      "unique": true
+    },
+    {
+      "engine": "patcher",
+      "id": "patcher.crop-page",
+      "title": "按裁剪框裁剪",
+      "desc": "按 CropBox 精确裁剪并同步调整页面尺寸，保留原页面内容不栅格化。",
+      "category": "organize",
+      "command": "crop",
+      "files": [
+        {
+          "field": "file",
+          "multiple": false,
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "pages",
+          "type": "string",
+          "default": "1-"
+        },
+        {
+          "name": "margin",
+          "type": "string",
+          "desc": "左,上,右,下（毫米）"
+        }
+      ],
+      "output": "pdf",
+      "fallback": "stirling.crop",
+      "unique": false
+    },
+    {
+      "engine": "patcher",
+      "id": "patcher.remove-restrictions",
+      "title": "解除权限限制",
+      "desc": "在已知口令或无口令情况下移除打印/复制/编辑限制，保留文档内容。",
+      "category": "security",
+      "command": "remove-restrictions",
+      "files": [
+        {
+          "field": "file",
+          "multiple": false,
+          "required": true
+        }
+      ],
+      "options": [
+        {
+          "name": "password",
+          "type": "password",
+          "required": false
+        }
+      ],
+      "output": "pdf",
+      "fallback": "stirling.remove-password",
+      "unique": false
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-merge",
+      "title": "合并 PDF",
+      "desc": "多份 PDF 合并，可拖拽排序、指定页面区间。",
+      "category": "organize",
+      "toolId": "pdf-merge",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-split",
+      "title": "拆分 PDF",
+      "desc": "按页、按份数或按指定区间拆分。",
+      "category": "organize",
+      "toolId": "pdf-split",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-rotate",
+      "title": "旋转页面",
+      "desc": "整册或指定页旋转 90/180/270 度。",
+      "category": "organize",
+      "toolId": "pdf-rotate",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-crop",
+      "title": "裁剪页面",
+      "desc": "可视化选择裁剪框，批量应用。",
+      "category": "organize",
+      "toolId": "pdf-crop",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-page-number",
+      "title": "添加页码",
+      "desc": "自定义起始页、格式、位置与字体。",
+      "category": "edit",
+      "toolId": "pdf-page-number",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-compress",
+      "title": "压缩 PDF",
+      "desc": "按目标体积压缩图片与结构。",
+      "category": "optimize",
+      "toolId": "pdf-compress",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-encrypt",
+      "title": "加密 PDF",
+      "desc": "设置打开口令与权限。",
+      "category": "security",
+      "toolId": "pdf-encrypt",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-decrypt",
+      "title": "解密 PDF",
+      "desc": "移除打开口令。",
+      "category": "security",
+      "toolId": "pdf-decrypt",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-to-image",
+      "title": "PDF 转图片",
+      "desc": "按 DPI 导出 PNG/JPEG。",
+      "category": "convert",
+      "toolId": "pdf-to-image",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.image-to-pdf",
+      "title": "图片转 PDF",
+      "desc": "多图合成 PDF，可选页面尺寸与边距。",
+      "category": "convert",
+      "toolId": "image-to-pdf",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-to-word",
+      "title": "PDF 转 Word",
+      "desc": "转换并保留段落结构。",
+      "category": "convert",
+      "toolId": "pdf-to-word",
+      "offline": false,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-text-markdown",
+      "title": "PDF 转 Markdown",
+      "desc": "提取文本与标题层级。",
+      "category": "convert",
+      "toolId": "pdf-text-markdown",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-ai-markdown",
+      "title": "AI 增强转 Markdown",
+      "desc": "结合模型做版面理解后输出结构化 Markdown。",
+      "category": "convert",
+      "toolId": "pdf-ai-markdown",
+      "offline": false,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-to-scan",
+      "title": "做旧扫描件",
+      "desc": "模拟扫描噪点、倾斜与阴影。",
+      "category": "edit",
+      "toolId": "pdf-to-scan",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-enhance",
+      "title": "画质增强",
+      "desc": "提升模糊扫描件的可读性。",
+      "category": "optimize",
+      "toolId": "pdf-enhance",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.pdf-editor",
+      "title": "PDF 编辑器",
+      "desc": "页面级编辑：插入、删除、重排、加文字。",
+      "category": "edit",
+      "toolId": "pdf-editor",
+      "offline": true,
+      "output": "pdf"
+    },
+    {
+      "engine": "native",
+      "id": "native.excel-to-pdf",
+      "title": "Excel 转 PDF",
+      "desc": "表格工作簿转 PDF，保留分页。",
+      "category": "convert",
+      "toolId": "excel-to-pdf",
+      "offline": true,
+      "output": "pdf"
+    }
+  ]
+}

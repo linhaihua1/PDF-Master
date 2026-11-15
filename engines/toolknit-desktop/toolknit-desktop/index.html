@@ -1,0 +1,1816 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ToolKnit Desktop</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <script data-tk-theme-bootstrap>
+      if (new URLSearchParams(window.location.search).get('screen-picker') !== '1') {
+        let theme = 'light';
+        try { if (localStorage.getItem('toolknit.theme.v3') === 'dark') theme = 'dark'; } catch {}
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.tkStartup = 'loading';
+        // Keep a failed entry module from leaving an uncloseable loading screen.
+        window.__toolknitStartupWatchdog = window.setTimeout(() => {
+          document.documentElement.dataset.tkStartup = 'revealing';
+          window.setTimeout(() => {
+            document.getElementById('appStartupMask')?.remove();
+            document.querySelector('.app')?.removeAttribute('inert');
+            document.body?.removeAttribute('aria-busy');
+            delete document.documentElement.dataset.tkStartup;
+          }, 350);
+        }, 15000);
+      }
+    </script>
+    <style data-tk-startup-style>
+      /* Critical first-paint UI: no external font, image or icon dependency. */
+      #appStartupMask { display: none; }
+      html[data-tk-startup] #appStartupMask {
+        position: fixed;
+        inset: 0;
+        z-index: 100001;
+        display: grid;
+        place-items: center;
+        margin: 0;
+        background: #fff;
+        color: #111;
+        opacity: 1;
+        transition: opacity 350ms ease;
+      }
+      html[data-theme="dark"] #appStartupMask { background: #000; color: #eee; }
+      html[data-tk-startup="revealing"] #appStartupMask { opacity: 0; }
+      .tk-startup-spinner {
+        box-sizing: border-box;
+        width: 36px;
+        height: 36px;
+        border: 3px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: tk-startup-spin 800ms linear infinite;
+      }
+      .tk-startup-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+      @keyframes tk-startup-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        .tk-startup-spinner { animation: none; }
+      }
+    </style>
+    <link rel="stylesheet" href="./src/styles/index.css">
+    <link rel="stylesheet" href="./src/tool-page-v2-final.css">
+    <link rel="stylesheet" href="./src/tool-custom-select.css">
+    <link rel="stylesheet" href="./src/tool-waveform-slider.css">
+    <link rel="stylesheet" href="./src/bg-removal.css">
+    <link rel="stylesheet" href="./src/tool-nav-unified.css">
+    <link rel="stylesheet" href="./src/styles/themes/index.css">
+    <link rel="stylesheet" href="./src/styles/themes/image-crop-light.css">
+    <script>
+      if (new URLSearchParams(window.location.search).get('screen-picker') === '1') {
+        document.documentElement.dataset.screenPicker = '1';
+      }
+    </script>
+    <style>
+      /* Resolve the saved theme before the first paint, including slow startup. */
+      html[data-theme="light"] { --tk-window-bg: #ffffff; }
+      /* Tauri's native window may be transparent for rounded corners. Keep a
+         real dark document surface during first paint so WebView2 never shows
+         an empty transparent frame if startup work is still settling. */
+      html,
+      body,
+      body.v2-home-active {
+        background: var(--tk-window-bg, #060607);
+      }
+
+      body.v2-home-active .global-window-controls {
+        display: none;
+      }
+
+      .app.is-v2-home {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        background: var(--tk-window-bg, #060607);
+      }
+    </style>
+  </head>
+  <body class="v2-home-active">
+    <div id="appStartupMask" role="status" aria-live="polite">
+      <span class="tk-startup-spinner" aria-hidden="true"></span>
+      <span class="tk-startup-label" data-i18n="app.loading">正在加载...</span>
+    </div>
+    <div class="transition-mask" id="transitionMask">
+      <div class="tk-mascot-lg" aria-hidden="true"></div>
+    </div>
+    <div class="toast-container" id="toastContainer"></div>
+    <div class="global-window-controls" aria-label="窗口控制">
+      <button class="ctrl-btn" type="button" data-i18n-title="common.minimize" title="最小化" data-action="minimize">
+        <i data-lucide="minus"></i>
+      </button>
+      <button class="ctrl-btn" type="button" data-i18n-title="common.maximize" title="最大化" data-action="maximize">
+        <i data-lucide="square"></i>
+      </button>
+      <button class="ctrl-btn close" type="button" data-i18n-title="common.close" title="关闭" data-action="close">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+        <!-- transcriptionModelOverlay is mounted by src/app/static-template-bootstrap.js. -->
+
+        <!-- ffmpegRuntimeOverlay is mounted by src/app/static-template-bootstrap.js. -->
+
+    <!-- ===== Help Center Overlay ===== -->
+        <!-- helpOverlay is mounted by src/app/static-template-bootstrap.js. -->
+
+    <!-- ===== Legal Overlay (Declaration & Usage Policy) ===== -->
+        <!-- legalOverlay is mounted by src/app/static-template-bootstrap.js. -->
+
+        <!-- feedbackOverlay is mounted by src/app/static-template-bootstrap.js. -->
+
+
+
+    <div class="pdf-merge-overlay pdf-merge-v2 hardware-v2 hardware-overview-overlay" id="hardwareOverviewOverlay" aria-hidden="true" data-hardware-mark="SYS"></div>
+
+    <div class="pdf-merge-overlay pdf-merge-v2 hardware-v2 hardware-cpu-memory-overlay" id="hardwareCpuMemoryOverlay" aria-hidden="true" data-hardware-mark="CPU"></div>
+
+    <div class="pdf-merge-overlay pdf-merge-v2 hardware-v2 hardware-gpu-display-overlay" id="hardwareGpuDisplayOverlay" aria-hidden="true" data-hardware-mark="GPU"></div>
+
+    <div class="pdf-merge-overlay pdf-merge-v2 hardware-v2 hardware-mainboard-overlay" id="hardwareMainboardOverlay" aria-hidden="true" data-hardware-mark="BIOS"></div>
+
+    <div class="pdf-merge-overlay pdf-merge-v2 hardware-v2 hardware-storage-overlay" id="hardwareStorageOverlay" aria-hidden="true" data-hardware-mark="DISK"></div>
+
+    <div class="pdf-merge-overlay pdf-merge-v2 hardware-v2 hardware-network-devices-overlay" id="hardwareNetworkDevicesOverlay" aria-hidden="true" data-hardware-mark="I/O"></div>
+
+    <div class="pdf-merge-overlay pdf-merge-v2 hardware-v2 hardware-power-sensors-overlay" id="hardwarePowerSensorsOverlay" aria-hidden="true" data-hardware-mark="PWR"></div>
+
+        <!-- largeFileCleanupOverlay mounts with its lazy feature. -->
+
+        <!-- largeFileCleanupSuccessOverlay mounts with its lazy feature. -->
+
+        <!-- largeFileCleanupDriveRootOverlay mounts with its lazy feature. -->
+
+        <!-- transcriptionOverlay mounts with its lazy feature. -->
+
+        <!-- dependencyGateOverlay mounts with its lazy feature. -->
+
+    <!-- Transcription Success Overlay -->
+        <!-- transcriptionSuccessOverlay mounts with its lazy feature. -->
+
+    <!-- Image Crop lazy mount -->
+    <div class="pdf-merge-overlay pdf-merge-v2 image-crop-v2" id="imageCropOverlay" aria-hidden="true"></div>
+
+    <!-- Image batch lazy mounts -->
+    <div class="pdf-merge-overlay pdf-merge-v2 image-convert-v2" id="imageConvertOverlay" aria-hidden="true"></div>
+    <div class="pdf-merge-overlay pdf-merge-v2 image-compress-v2 audio-convert-overlay" id="imageCompressOverlay" aria-hidden="true"></div>
+
+    <!-- Icon Generator Tool Page -->
+    <div class="pdf-merge-overlay pdf-merge-v2 icon-gen-v2 audio-convert-overlay" id="iconGenOverlay" aria-hidden="true"></div>
+
+    <!-- Video Convert Tool Page -->
+        <!-- videoConvertOverlay mounts with its lazy feature. -->
+
+        <!-- videoFrameOverlay mounts with its lazy feature. -->
+
+        <!-- videoFrameProcessMask mounts with its lazy feature. -->
+        <!-- videoFrameSuccessOverlay mounts with its lazy feature. -->
+
+    <div class="feature-tool-overlay pdf-merge-v2 image-stitch-v2 image-stitch-overlay" id="imageStitchOverlay" aria-hidden="true"></div>
+
+        <!-- videoGifOverlay mounts with its lazy feature. -->
+        <!-- videoGifProcessMask mounts with its lazy feature. -->
+        <!-- videoGifSuccessOverlay mounts with its lazy feature. -->
+
+    <!-- BPM Detect Tool Page -->
+        <!-- bpmDetectOverlay mounts with its lazy feature. -->
+
+    <!-- BPM Detect Process Mask (reuse mascot + progress bar) -->
+        <!-- bpmProcessMask mounts with its lazy feature. -->
+
+    <!-- Audio Clip Editor Tool Page -->
+        <!-- audioClipOverlay mounts with its lazy feature. -->
+
+    <!-- Audio Clip Success Overlay -->
+        <!-- audioClipSuccessOverlay mounts with its lazy feature. -->
+
+    <!-- Audio Clip Loading Mask -->
+        <!-- audioClipProcessMask mounts with its lazy feature. -->
+
+    <!-- Audio Extract Tool Page -->
+        <!-- pdfMergeOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Merger Process Mask -->
+        <!-- pdfMergeProcessMask mounts with its lazy feature. -->
+
+    <!-- PDF Merger Success Overlay -->
+        <!-- pdfMergeSuccessOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Merger Page Selection Flow -->
+        <!-- pdfMergeSelection mounts with its lazy feature. -->
+
+    <!-- PDF Split Tool Page -->
+        <!-- pdfSplitOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Split Process Mask -->
+        <!-- pdfSplitProcessMask mounts with its lazy feature. -->
+
+    <!-- PDF Split Success Overlay -->
+        <!-- pdfSplitSuccessOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Split Page Workspace -->
+        <!-- pdfSplitWorkspace mounts with its lazy feature. -->
+
+    <!-- PDF To Image Tool Page -->
+        <!-- pdfToImageOverlay mounts with its lazy feature. -->
+
+    <!-- PDF To Image Page Workspace -->
+        <!-- pdfToImageWorkspace mounts with its lazy feature. -->
+
+    <!-- PDF To Image Process Mask -->
+        <!-- pdfToImageProcessMask mounts with its lazy feature. -->
+
+    <!-- PDF To Image Success Overlay -->
+        <!-- pdfToImageSuccessOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Editor Tool Page -->
+    <!-- PDF Page Number Tool -->
+        <!-- pdfPageNumberOverlay mounts with its lazy feature. -->
+
+        <!-- pdfPageNumberProcessMask mounts with its lazy feature. -->
+
+        <!-- pdfPageNumberSuccessOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Crop Tool -->
+        <!-- pdfCropOverlay mounts with its lazy feature. -->
+
+        <!-- pdfCropProcessMask mounts with its lazy feature. -->
+
+        <!-- pdfCropSuccessOverlay mounts with its lazy feature. -->
+
+        <!-- pdfEditorOverlay mounts with its lazy feature. -->
+
+        <!-- pdfEditorProcessMask mounts with its lazy feature. -->
+
+        <!-- pdfEditorSuccessOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Rotate Tool Page -->
+        <!-- pdfRotateOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Rotate Process Mask -->
+        <!-- pdfRotateProcessMask mounts with its lazy feature. -->
+
+    <!-- PDF Rotate Success Overlay -->
+        <!-- pdfRotateSuccessOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Rotate Page Workspace -->
+        <!-- pdfRotateWorkspace mounts with its lazy feature. -->
+
+    <!-- PDF Encrypt Tool Page -->
+        <!-- pdfEncryptOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Encrypt Password Dialog -->
+        <!-- pdfEncryptPasswordDialog mounts with its lazy feature. -->
+
+    <!-- PDF Encrypt Process Mask -->
+        <!-- pdfEncryptProcessMask mounts with its lazy feature. -->
+
+    <!-- PDF Encrypt Success Overlay -->
+        <!-- pdfEncryptSuccessOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Decrypt Tool Page -->
+        <!-- pdfDecryptOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Decrypt Password Dialog -->
+        <!-- pdfDecryptPasswordDialog mounts with its lazy feature. -->
+
+    <!-- PDF Decrypt Process Mask -->
+        <!-- pdfDecryptProcessMask mounts with its lazy feature. -->
+
+    <!-- PDF Decrypt Success Overlay -->
+        <!-- pdfDecryptSuccessOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Enhance Tool Page -->
+        <!-- pdfEnhanceOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Enhance Process Mask -->
+        <!-- pdfEnhanceProcessMask mounts with its lazy feature. -->
+
+    <!-- PDF Enhance Success Overlay -->
+        <!-- pdfEnhanceSuccessOverlay mounts with its lazy feature. -->
+
+
+    <!-- ===== AI Polish Tool Page ===== -->
+        <!-- aiPolishOverlay mounts with its lazy feature. -->
+
+        <!-- libreOfficeRuntimeOverlay is mounted by src/app/static-template-bootstrap.js. -->
+        <!-- aiPolishMask mounts with its lazy feature. -->
+    <!-- ===== End AI Polish Tool Page ===== -->
+
+    <!-- ===== AI Translate Tool Page ===== -->
+        <!-- aiTranslateOverlay mounts with its lazy feature. -->
+        <!-- aiTranslateMask mounts with its lazy feature. -->
+    <!-- ===== End AI Translate Tool Page ===== -->
+
+    <!-- ===== AI Document Tool Page ===== -->
+        <!-- aiDocOverlay mounts with its lazy feature. -->
+
+    <!-- ===== AI Table Tool Page ===== -->
+        <!-- aiTableOverlay mounts with its lazy feature. -->
+
+    <!-- AI Table Success Overlay -->
+        <!-- aiTableSuccessOverlay mounts with its lazy feature. -->
+        <!-- aiTableMask mounts with its lazy feature. -->
+
+    <!-- ===== Color Extractor Page ===== -->
+        <!-- colorExtractorOverlay mounts with its lazy feature. -->
+
+    <!-- Desktop-wide screen picker window content -->
+     <div id="screenPickerOverlay" aria-hidden="true" data-i18n-aria-label="home.colorExtractor.screenPickerAria" aria-label="屏幕取色器">
+      <canvas id="screenPickerCanvas"></canvas>
+      <div class="screen-picker-crosshair" aria-hidden="true"></div>
+      <div class="screen-picker-readout"><span class="screen-picker-readout-swatch" id="screenPickerReadoutSwatch"></span><strong id="screenPickerReadoutHex">#000000</strong><span id="screenPickerReadoutRgb">rgb(0, 0, 0)</span></div>
+       <div class="screen-picker-help"><i data-lucide="move"></i><span data-i18n="home.colorExtractor.screenPickerHelp">拖动准星定位 · 松开取色 · Esc 取消</span></div>
+       <div class="screen-picker-locked" id="screenPickerLocked" hidden><i data-lucide="check"></i><span data-i18n="home.colorExtractor.screenPickerLocked">颜色已锁定</span><button type="button" id="screenPickerFinishBtn" data-i18n="home.colorExtractor.screenPickerFinish">完成取色</button></div>
+    </div>
+
+    <!-- ===== Text Stats Page ===== -->
+        <!-- textStatsOverlay mounts with its lazy feature. -->
+
+    <!-- ===== Text Format Page ===== -->
+        <!-- textFormatOverlay mounts with its lazy feature. -->
+
+    <!-- ===== Typing Test Page ===== -->
+        <!-- typingTestOverlay mounts with its lazy feature. -->
+
+    <!-- ===== Body Fat Calculator Page ===== -->
+        <!-- bmiCalcOverlay mounts with its lazy feature. -->
+    <!-- ===== End Body Fat Calculator Page ===== -->
+
+    <!-- BMI Calc Warning Dialog -->
+        <!-- bmiCalcWarnDialog mounts with its lazy feature. -->
+
+    <!-- ===== Timestamp Calculator Page ===== -->
+        <!-- tsCalcOverlay mounts with its lazy feature. -->
+    <!-- ===== End Timestamp Calculator Page ===== -->
+
+    <!-- ===== Mortgage Calculator Page ===== -->
+        <!-- mortgageCalcOverlay mounts with its lazy feature. -->
+    <!-- ===== End Mortgage Calculator Page ===== -->
+
+    <!-- ===== Interest Calculator Page ===== -->
+        <!-- interestCalcOverlay mounts with its lazy feature. -->
+    <!-- ===== End Interest Calculator Page ===== -->
+
+    <!-- ===== Password Generator Page ===== -->
+        <!-- passwordGenOverlay mounts with its lazy feature. -->
+    <!-- ===== End Password Generator Page ===== -->
+
+    <!-- AI Document Full-screen Edit Preview Overlay -->
+        <!-- aiDocEditOverlay mounts with its lazy feature. -->
+
+    <!-- AI Document Success Overlay -->
+        <!-- aiDocSuccessOverlay mounts with its lazy feature. -->
+        <!-- aiDocMask mounts with its lazy feature. -->
+    <!-- ===== End AI Document Tool Page ===== -->
+
+    <!-- ===== PDF Compress Tool Page ===== -->
+        <!-- pdfCompressOverlay mounts with its lazy feature. -->
+
+    <!-- PDF Compress Process Mask -->
+        <!-- pdfCompressProcessMask mounts with its lazy feature. -->
+
+    <!-- PDF Compress Success Overlay -->
+        <!-- pdfCompressSuccessOverlay mounts with its lazy feature. -->
+    <!-- ===== End PDF Compress Tool Page ===== -->
+
+    <!-- PPT To PDF Tool Page -->
+    <div class="feature-tool-overlay pdf-merge-overlay pdf-merge-v2 ppt-render-v2 ppt-render-v2-pdf" id="pptToPdfOverlay" role="dialog" aria-modal="true" aria-labelledby="pptToPdfTitle" aria-hidden="true"></div>
+
+    <!-- PPT To Image Tool Page -->
+    <div class="feature-tool-overlay pdf-merge-overlay pdf-merge-v2 ppt-render-v2 ppt-render-v2-image" id="pptToImageOverlay" role="dialog" aria-modal="true" aria-labelledby="pptToImageTitle" aria-hidden="true"></div>
+
+    <!-- PPT Images Tool Page (mounted lazily) -->
+    <div class="feature-tool-overlay pdf-merge-overlay pdf-merge-v2 ppt-render-v2 ppt-render-v2-image ppt-images-v2" id="pptImagesOverlay" role="dialog" aria-modal="true" aria-labelledby="pptImagesTitle" aria-hidden="true"></div>
+
+    <!-- PPT workflow pages are mounted lazily. -->
+    <div class="pdf-merge-overlay pdf-merge-v2 ppt-render-v2 ppt-render-v2-text ppt-text-v2" id="pptTextOverlay" role="dialog" aria-modal="true" aria-labelledby="pptTextTitle" aria-hidden="true"></div>
+    <div class="pdf-merge-overlay pdf-merge-v2 ppt-compress-v2" id="pptCompressOverlay" role="dialog" aria-modal="true" aria-labelledby="pptCompressTitle" aria-hidden="true"></div>
+    <div class="pdf-merge-overlay pdf-merge-v2 ppt-outline-v2" id="pptOutlineOverlay" role="dialog" aria-modal="true" aria-labelledby="pptOutlineTitle" aria-hidden="true"></div>
+
+    <!-- PPT AI Draft Tool Page (mounted lazily) -->
+    <div class="pdf-merge-overlay pdf-merge-v2 ppt-draft-overlay ppt-draft-v2" id="pptDraftOverlay" role="dialog" aria-modal="true" aria-labelledby="pptDraftTitle" aria-hidden="true"></div>
+
+    <div class="app is-v2-home">
+      <div class="home-v2-shader-overlay" aria-hidden="true"></div>
+      <header class="home-v2-topbar">
+        <button class="home-v2-brand" type="button" data-home-return aria-label="ToolKnit 首页">
+          <img src="/logo.png" alt="" />
+          <span class="home-v2-brand-name">ToolKnit</span>
+          <span class="home-v2-brand-version">3.2</span>
+        </button>
+        <div class="home-v2-top-actions">
+          <button class="home-v2-nav-link" type="button" data-home-link="website">
+            <i data-lucide="globe-2"></i>
+            <span>网页版本</span>
+          </button>
+          <button class="home-v2-support-top" type="button" data-open-support>
+            <i data-lucide="heart"></i>
+            <span>支持作者</span>
+          </button>
+          <div class="home-v2-window-cluster" aria-label="窗口与设置">
+            <button class="home-v2-icon-button" id="homeV2Settings" type="button" data-i18n-title="nav.settings" title="设置" aria-label="设置">
+              <i data-lucide="settings"></i>
+            </button>
+            <div class="home-v2-window-controls" aria-label="窗口控制">
+              <button class="home-v2-window-button ctrl-btn" type="button" data-i18n-title="common.minimize" title="最小化" data-action="minimize"><i data-lucide="minus"></i></button>
+              <button class="home-v2-window-button ctrl-btn" type="button" data-i18n-title="common.maximize" title="最大化" data-action="maximize"><i data-lucide="square"></i></button>
+              <button class="home-v2-window-button ctrl-btn" type="button" data-i18n-title="common.close" title="关闭" data-action="close"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <img class="sidebar-brand-logo" src="/logo.png" alt="" aria-hidden="true" />
+          <div class="sidebar-title">ToolKnit</div>
+        </div>
+        <div class="sidebar-nav">
+          <div class="nav-item active" data-category="home">
+            <i data-lucide="home" class="nav-icon"></i>
+            <span data-i18n="nav.home">首页</span>
+          </div>
+          <div class="nav-item" data-category="pdf">
+            <i data-lucide="file-text" class="nav-icon"></i>
+            <span data-i18n="nav.pdfTools">PDF工具</span>
+          </div>
+          <div class="nav-item" data-category="ppt">
+            <i data-lucide="presentation" class="nav-icon"></i>
+            <span data-i18n="nav.pptTools">PPT工具</span>
+          </div>
+          <div class="nav-item" data-category="image">
+            <i data-lucide="image" class="nav-icon"></i>
+            <span data-i18n="nav.imageTools">图像工具</span>
+          </div>
+          <div class="nav-item" data-category="audio">
+            <i data-lucide="headphones" class="nav-icon"></i>
+            <span data-i18n="nav.audioTools">音频工具</span>
+          </div>
+          <div class="nav-item" data-category="video">
+            <i data-lucide="video" class="nav-icon"></i>
+            <span data-i18n="nav.videoTools">视频工具</span>
+          </div>
+          <div class="nav-item" data-category="text">
+            <i data-lucide="type" class="nav-icon"></i>
+            <span data-i18n="nav.textTools">文本工具</span>
+          </div>
+          <div class="nav-item" data-category="calculator">
+            <i data-lucide="calculator" class="nav-icon"></i>
+            <span data-i18n="nav.calculator">计算器工具</span>
+          </div>
+          <div class="nav-item" data-category="creative">
+            <i data-lucide="lightbulb" class="nav-icon"></i>
+            <span data-i18n="nav.creative">创意工具</span>
+          </div>
+          <div class="nav-item" data-category="cleanup">
+            <i data-lucide="trash-2" class="nav-icon"></i>
+            <span data-i18n="nav.cleanupTools">清理工具</span>
+          </div>
+          <div class="nav-item" data-category="ai">
+            <i data-lucide="cpu" class="nav-icon"></i>
+            <span data-i18n="nav.aiTools">AI工具</span>
+          </div>
+          <div class="nav-item" data-category="hardware">
+            <i data-lucide="monitor-cog" class="nav-icon"></i>
+            <span data-i18n="nav.hardware">硬件工具</span>
+          </div>
+          <div class="nav-item" data-category="developer">
+            <i data-lucide="braces" class="nav-icon"></i>
+            <span data-i18n="nav.developer">开发者工具</span>
+          </div>
+        </div>
+        <div class="sidebar-footer">
+          <div class="footer-btns">
+            <div class="footer-btn" id="helpBtn" data-i18n-title="common.help" title="帮助">
+              <i data-lucide="help-circle"></i>
+            </div>
+            <div class="footer-btn" id="feedbackBtn" data-i18n-title="common.feedback" title="反馈">
+              <i data-lucide="message-square"></i>
+            </div>
+            <div class="footer-btn" id="settingsBtn" data-i18n-title="nav.settings" title="设置">
+              <i data-lucide="settings"></i>
+            </div>
+          </div>
+          <div class="version-text" id="sidebarVersion">v3.2.0</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="main">
+        <div class="main-header">
+          <div class="main-header-drag-region" aria-hidden="true"></div>
+          <button class="ctrl-btn" type="button" data-i18n-title="common.minimize" title="最小化" data-action="minimize">
+            <i data-lucide="minus"></i>
+          </button>
+          <button class="ctrl-btn" type="button" data-i18n-title="common.maximize" title="最大化" data-action="maximize">
+            <i data-lucide="square"></i>
+          </button>
+          <button class="ctrl-btn close" type="button" data-i18n-title="common.close" title="关闭" data-action="close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="main-content">
+          <div class="content-section active" data-category="home">
+            <div class="home-v2-shell">
+              <section class="hero" data-i18n-aria-label="home.heroAria" aria-label="ToolKnit 首页首屏">
+                <div class="hero-copy">
+                  <p class="eyebrow text-en">TOOLKNIT / LOCAL CREATIVE WORKBENCH</p>
+                  <h1>
+                    <span class="hero-title-brand text-en-display">ToolKnit</span>
+                    <span class="hero-title-sub text-cn" data-i18n="home.heroTitleSub">本地文件工作台 / 安静、可靠、始终留在本机</span>
+                  </h1>
+                  <p class="hero-desc text-cn" data-i18n="home.heroDescription">把分散的文件工作，编织成一套安静、可靠、始终留在本地的处理方式。</p>
+                  <div class="hero-actions">
+                    <button class="primary-action" type="button" data-open-tools>
+                      <i data-lucide="layout-grid"></i>
+                      <span data-i18n="home.openTools">打开工具库</span>
+                    </button>
+                    <button class="secondary-action" type="button" id="homeSupportAuthor" data-open-support aria-haspopup="dialog" aria-controls="donationOverlay">
+                      <i data-lucide="heart"></i>
+                      <span data-i18n="home.supportUpdates">支持持续更新</span>
+                    </button>
+                    <button class="secondary-action" type="button" data-home-link="website">
+                      <i data-lucide="globe-2"></i>
+                      <span data-i18n="home.openWebWorkbench">点击进入网页端体验更多功能</span>
+                    </button>
+                    <button class="secondary-action" type="button" id="homeCustomTools" aria-haspopup="dialog" aria-controls="customToolsOverlay">
+                      <i data-lucide="wrench"></i><span data-i18n="home.customTools">定制工具</span>
+                    </button>
+                  </div>
+                  <p class="hero-support-note text-cn">
+                    <span data-i18n="home.recommendedProviders">作者推荐中转站 · 低价不降智</span>
+                    <span class="home-provider-links"><a class="home-provider-malian" href="https://www.mlai.online/register?aff=5Q2VVMD7YJVB" data-home-link="malian" target="_blank" rel="noopener noreferrer" data-i18n="home.malian">马良AI</a><a class="home-provider-doufu" href="https://doufuapi.com/register?aff=TWKCBH9RGLN3" data-home-link="doufu" target="_blank" rel="noopener noreferrer" data-i18n="home.doufu">豆腐AI</a></span>
+                  </p>
+                  <div class="hero-meta" data-i18n-aria-label="home.productInfoAria" aria-label="产品信息">
+                    <span><i data-lucide="monitor" aria-hidden="true"></i><span>WINDOWS DESKTOP</span></span>
+                    <span><i data-lucide="hard-drive" aria-hidden="true"></i><span>LOCAL FIRST</span></span>
+                    <span><i data-lucide="code-xml" aria-hidden="true"></i><span>OPEN SOURCE</span></span>
+                  </div>
+                </div>
+
+
+                <div class="home-weaving">
+                  <div class="home-weaving-art" aria-hidden="true"></div>
+                  <button class="home-weaving-link" type="button" data-home-link="website" data-i18n-aria-label="home.openWebAria" aria-label="打开 ToolKnit 网页版">
+                    <i data-lucide="globe-2" aria-hidden="true"></i>
+                    <span data-i18n="home.openWebWorkbench">点击进入网页端体验更多功能</span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="favorites" id="favorites" aria-labelledby="favoritesTitle">
+                <div class="section-heading">
+                  <div>
+                    <span class="section-index">01 / YOUR WORKBENCH</span>
+                    <h2 id="favoritesTitle" data-i18n="home.favoritesTitle">我的收藏</h2>
+                    <p data-i18n="home.favoritesDescription">只留下你真正会反复使用的工具。</p>
+                  </div>
+                  <button class="manage-favorites" id="manageFavorites" type="button" aria-pressed="false">
+                    <i data-lucide="plus"></i>
+                    <span data-i18n="home.manageFavorites">管理收藏</span>
+                  </button>
+                </div>
+
+                <div class="favorite-grid favorites-content" id="favoritesContent">
+                  <div class="placeholder-box" data-i18n="home.empty">暂无内容</div>
+                </div>
+              </section>
+
+              <section class="tool-explorer" aria-labelledby="toolExplorerTitle">
+                <div class="tool-finder-head">
+                  <div>
+                    <span class="section-index">02 / TOOL EXPLORER</span>
+                    <h2 class="tool-finder-title" id="toolExplorerTitle" data-i18n="home.toolExplorerTitle">搜索全部工具</h2>
+                    <p class="tool-finder-subtitle" data-i18n="home.toolExplorerDescription">从这里开始找工具。默认展示全部已上线工具，也可以输入关键词或切换分类胶囊。</p>
+                  </div>
+                  <label class="home-search-field">
+                    <i data-lucide="search"></i>
+                    <input id="homeToolSearch" type="search" placeholder="搜索 PDF、PPT、图像、音视频、文本、AI、硬件..." autocomplete="off" data-i18n-placeholder="home.toolSearchPlaceholder" data-i18n-aria-label="home.searchToolsLabel" aria-label="搜索全部工具" />
+                  </label>
+                </div>
+
+                <div class="category-strip" id="homeCategoryStrip" data-i18n-aria-label="home.categoriesAria" aria-label="工具分类">
+                  <button class="category-chip is-active" type="button" data-home-category="all"><i data-lucide="sparkles"></i><span data-i18n="home.categoryAll">全部</span></button>
+                  <button class="category-chip" type="button" data-home-category="new" aria-pressed="false"><i data-lucide="badge-plus"></i><span data-i18n="home.categoryNew">V3.2新功能</span></button>
+                  <button class="category-chip" type="button" data-home-category="pdf"><i data-lucide="file-text"></i><span>PDF</span></button>
+                  <button class="category-chip" type="button" data-home-category="ppt"><i data-lucide="presentation"></i><span>PPT</span></button>
+                  <button class="category-chip" type="button" data-home-category="image"><i data-lucide="image"></i><span data-i18n="home.categoryImage">图像</span></button>
+                  <button class="category-chip" type="button" data-home-category="media"><i data-lucide="film"></i><span data-i18n="home.categoryMedia">音视频</span></button>
+                  <button class="category-chip" type="button" data-home-category="text"><i data-lucide="type"></i><span data-i18n="home.categoryText">文本</span></button>
+                  <button class="category-chip" type="button" data-home-category="calc"><i data-lucide="calculator"></i><span data-i18n="home.categoryCalculator">计算器</span></button>
+                  <button class="category-chip" type="button" data-home-category="creative"><i data-lucide="palette"></i><span data-i18n="home.categoryCreative">创意</span></button>
+                  <button class="category-chip" type="button" data-home-category="ai"><i data-lucide="sparkles"></i><span>AI</span></button>
+                  <button class="category-chip" type="button" data-home-category="hardware"><i data-lucide="cpu"></i><span data-i18n="home.categoryHardware">硬件</span></button>
+                  <button class="category-chip" type="button" data-home-category="developer"><i data-lucide="braces"></i><span data-i18n="home.categoryDeveloper">开发者</span></button>
+                  <button class="category-chip" type="button" data-home-category="clean"><i data-lucide="trash-2"></i><span data-i18n="home.categoryCleanup">清理</span></button>
+                   <div class="tool-feedback-prompt">
+                     <span data-i18n="home.featureRequestPrompt">Can't find the right tool? Tell us what you'd like to see.</span>
+                     <button class="tool-feedback-link" type="button" data-home-link="feedback">
+                       <i data-lucide="message-square-plus"></i>
+                       <span data-i18n="home.featureRequestAction">Suggest a feature</span>
+                     </button>
+                   </div>
+                 </div>
+
+                 <div class="tool-result-grid" id="homeToolGrid" aria-live="polite"></div>
+                <div class="tool-load-more" id="homeToolLoadMore" aria-live="polite" hidden>
+                  <span class="tool-load-more-summary" id="homeToolLoadMoreSummary"></span>
+                  <button class="tool-load-more-button" id="homeToolLoadMoreButton" type="button" aria-controls="homeToolGrid">
+                    <span data-i18n="home.loadMore">继续加载</span>
+                    <i data-lucide="arrow-down"></i>
+                  </button>
+                </div>
+              </section>
+
+              <section class="github-strip" aria-labelledby="openSourceTitle">
+                <div class="github-manifesto">
+                  <span class="github-section-index" data-i18n="home.openSource.index">03 / OPEN COMMONS</span>
+                  <div class="github-intro">
+                    <div class="github-mark" aria-hidden="true"><i data-lucide="github"></i></div>
+                    <div>
+                      <span class="github-kicker" data-i18n="home.openSource.kicker">OPEN SOURCE / WINDOWS EXE</span>
+                      <strong id="openSourceTitle" data-i18n="home.openSource.title">这个 EXE，不是黑箱。</strong>
+                      <p data-i18n="home.openSource.desc">ToolKnit Desktop 把能直接使用的工具和完整源代码一起交到你手里。文件留在本机，代码公开可查；任何人都可以阅读、分享、提出问题，也可以把它改得更好。</p>
+                      <div class="github-principles" aria-label="开源原则">
+                        <span><i data-lucide="code-2" aria-hidden="true"></i><span data-i18n="home.openSource.sourceVisible">源码可查</span></span>
+                        <span><i data-lucide="shield-check" aria-hidden="true"></i><span data-i18n="home.openSource.localFirst">文件留在本机</span></span>
+                        <span><i data-lucide="git-pull-request-arrow" aria-hidden="true"></i><span data-i18n="home.openSource.buildTogether">欢迎共同改进</span></span>
+                      </div>
+                      <div class="github-actions">
+                        <span class="github-repo">ZihangDong / toolknit-desktop</span>
+                        <a class="github-open" href="https://github.com/ZihangDong/toolknit-desktop" data-home-link="github" target="_blank" rel="noreferrer" title="打开 GitHub" aria-label="打开 GitHub">
+                          <span data-i18n="home.openSource.cta">查看源码与参与共建</span>
+                          <i data-lucide="arrow-up-right"></i>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="github-stat" aria-label="GitHub Stars">
+                  <span class="github-stat-label" data-i18n="home.openSource.stars">GITHUB STARS</span>
+                  <div class="github-stat-value"><i class="github-stat-icon github-stat-icon-star" data-lucide="star" aria-hidden="true"></i><strong id="githubStars">--</strong></div>
+                  <span class="github-stat-note" data-i18n="home.openSource.starNote">每一颗 Star，都是自由工具继续生长的公开回声。</span>
+                </div>
+              </section>
+
+              <footer class="footer-note">
+                <span>TOOLKNIT DESKTOP 3.2.0 / UI CONCEPT 01</span>
+                <span>FILES STAY ON YOUR DEVICE</span>
+              </footer>
+            </div>
+            <button class="back-to-top" id="backToTop" type="button" data-i18n-aria-label="home.backToTopAria" aria-label="回到顶部">
+              <i data-lucide="arrow-up"></i>
+            </button>
+          </div>
+          <div class="content-section" data-category="pdf">
+            <div class="tools-page audio-page">
+              <div class="tools-hero audio-hero">
+                <div class="tools-hero-text">
+                  <span class="tools-eyebrow" data-i18n="home.toolNames.pdfEyebrow">Document Studio</span>
+                  <h2 data-i18n="nav.pdfTools">PDF工具</h2>
+                  <p data-i18n="home.pdfCategoryDesc">合并、拆分、旋转、加密、解密、压缩与扫描件文字增强。</p>
+                </div>
+              </div>
+              <div class="audio-search tools-search">
+                <input type="text" class="tools-search-input" data-i18n-placeholder="home.searchPlaceholder" placeholder="搜索工具...">
+                <button class="audio-search-btn tools-search-btn" data-i18n-aria-label="home.searchBtn" aria-label="搜索">
+                  <i data-lucide="search"></i>
+                </button>
+                <button class="audio-clear-btn tools-clear-btn" data-i18n="home.clearSearch" style="display:none;">清除搜索结果</button>
+              </div>
+              <div class="audio-list">
+                <div class="audio-list-item" data-tool="pdf-page-number" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfPageNumber">
+                  <div class="audio-list-icon"><i data-lucide="hash"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfPageNumber">PDF 加页码</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfPageNumberDesc">实时预览并批量添加页码</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfPageNumberMeta">页面排序 / 多种样式 / PDF 与 ZIP 导出</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-crop" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfCrop">
+                  <div class="audio-list-icon"><i data-lucide="crop"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfCrop">PDF 裁剪</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfCropDesc">框选保留区域并批量裁剪页面</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfCropMeta">八点调节 / 精确边距 / PDF 与 ZIP 导出</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-editor" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfEditor">
+                  <div class="audio-list-icon"><i data-lucide="file-pen-line"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfEditor">PDF 编辑器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfEditorDesc">页面排序、删除、旋转与提取</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfEditorMeta">页面管理 / 追加合并 / 纯本地处理</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-merge" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfMerge">
+                  <div class="audio-list-icon"><i data-lucide="files"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfMerge">PDF 文件合并</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfMergeDesc">多个 PDF 按顺序合并为一个</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfMergeMeta">拖拽排序 / 批量合并 / 纯本地处理</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-split" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfSplit">
+                  <div class="audio-list-icon"><i data-lucide="scissors"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfSplit">PDF 文件拆分</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfSplitDesc">选择页面并拆分为独立 PDF</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfSplitMeta">页面选择 / 批量导出 / 纯本地处理</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-to-image" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfToImage">
+                  <div class="audio-list-icon"><i data-lucide="images"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfToImage">PDF 转图像</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfToImageDesc">选择页面导出单图或长图</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfToImageMeta">逐页图像 / 长图拼接 / 高清导出</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-to-word" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfWord">
+                  <div class="audio-list-icon"><i data-lucide="file-type-2"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfWord">PDF 转 Word</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfWordDesc">将原生 PDF 转为可编辑 Word</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags"><span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span><span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span></div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfWordMeta">本地排版 / 可选 AI / DOCX</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="image-to-pdf" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.imagePdf">
+                  <div class="audio-list-icon"><i data-lucide="images"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.imagePdf">图像转 PDF</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.imagePdfDesc">多张图像合并为 PDF 或扫描件 PDF</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags"><span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span><span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span></div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.imagePdfMeta">A4 适配 / 自由排序 / 扫描效果</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-to-scan" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfScan">
+                  <div class="audio-list-icon"><i data-lucide="scan"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfScan">PDF 转扫描件</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfScanDesc">将 PDF 转为纯图像扫描版</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfScanMeta">扫描效果 / 页面选择 / 纯本地处理</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-text-markdown" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfTextMarkdown">
+                  <div class="audio-list-icon"><i data-lucide="scan-text"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfTextMarkdown">PDF 文本提取 / Markdown</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfTextMarkdownDesc">提取电子 PDF 文字并生成 Markdown</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfTextMarkdownMeta">逐页重排 / 页码标记 / 导入 Markdown 编辑器</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-rotate" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfRotate">
+                  <div class="audio-list-icon"><i data-lucide="rotate-cw"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfRotate">PDF 页面旋转</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfRotateDesc">旋转 PDF 页面方向</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfRotateMeta">单页旋转 / 整体旋转 / 纯本地处理</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-encrypt" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfEncrypt">
+                  <div class="audio-list-icon"><i data-lucide="lock"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfEncrypt">PDF 文件加密</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfEncryptDesc">给 PDF 添加密码保护</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfEncryptMeta">密码保护 / 权限控制 / 纯本地处理</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-decrypt" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfDecrypt">
+                  <div class="audio-list-icon"><i data-lucide="unlock"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfDecrypt">PDF 文件解密</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfDecryptDesc">移除 PDF 密码保护</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfDecryptMeta">密码解锁 / 移除限制 / 纯本地处理</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-compress" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfCompress">
+                  <div class="audio-list-icon"><i data-lucide="minimize-2"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfCompress">PDF 文件压缩</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfCompressDesc">压缩 PDF 体积，支持多等级</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfCompressMeta">低中高等级 / 批量压缩 / 纯本地处理</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="pdf-enhance" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfEnhance">
+                  <div class="audio-list-icon"><i data-lucide="sparkles"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfEnhance">PDF 文字增强</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfEnhanceDesc">提升模糊文字清晰度</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfEnhanceMeta">去噪锐化 / 对比增强 / 纯本地处理</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="excel-to-pdf" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.excelToPdf">
+                  <div class="audio-list-icon"><i data-lucide="sheet"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.excelToPdf">Excel 转 PDF</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.excelToPdfDesc">把工作簿本地渲染为便于分享和打印的 PDF</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pdfCategoryTag">PDF工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.excelToPdfMeta">工作表范围 / A4 / 横竖版 / 本地渲染</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-section" data-category="ppt">
+            <div class="tools-page">
+              <div class="tools-hero-text">
+                <span class="tools-eyebrow" data-i18n="home.toolNames.pptEyebrow">Presentation Studio</span>
+                <h2 data-i18n="nav.pptTools">PPT工具</h2>
+                <p data-i18n="home.pptCategoryDesc">提取素材、转换页面、压缩演示文稿，并为后续 AI PPT 工作流做准备。</p>
+              </div>
+              <div class="audio-search tools-search">
+                <input type="text" class="tools-search-input" data-i18n-placeholder="home.searchPlaceholder" placeholder="搜索工具...">
+                <button class="audio-search-btn tools-search-btn" data-i18n-aria-label="home.searchBtn" aria-label="搜索">
+                  <i data-lucide="search"></i>
+                </button>
+                <button class="audio-clear-btn tools-clear-btn" data-i18n="home.clearSearch" style="display:none;">清除搜索结果</button>
+              </div>
+              <div class="audio-list">
+                <div class="audio-list-item" data-tool="ppt-to-pdf" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pptToPdf">
+                  <div class="audio-list-icon"><i data-lucide="file-output"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pptToPdf">PPT 转 PDF</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pptToPdfDesc">本地渲染 PPTX 为可分享 PDF</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pptCategoryTag">PPT工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pptToPdfMeta">LibreOffice 渲染 / Manifest / 本地输出</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="ppt-to-image" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pptToImage">
+                  <div class="audio-list-icon"><i data-lucide="images"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pptToImage">PPT 转图片</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pptToImageDesc">选择页码逐页导出高清图片</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pptCategoryTag">PPT工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pptToImageMeta">PNG / JPG / WebP / 页码选择</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="ppt-images" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pptImages">
+                  <div class="audio-list-icon"><i data-lucide="image-up"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pptImages">PPT 图片提取</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pptImagesDesc">导出 PPTX 内嵌原始图片素材</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pptCategoryTag">PPT工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pptImagesMeta">按页筛选 / 编号选择 / 去重 / Manifest 清单</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="ppt-text" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pptText">
+                  <div class="audio-list-icon"><i data-lucide="file-text"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pptText">PPT AI 文本提取</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pptTextDesc">提取标题、正文与备注，可选 AI 整理</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pptCategoryTag">PPT工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pptTextMeta">Markdown / TXT / JSON / 大纲讲稿</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="ppt-compress" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pptCompress">
+                  <div class="audio-list-icon"><i data-lucide="archive"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pptCompress">PPT 压缩</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pptCompressDesc">安全压缩 PPTX，保留图片质量与版式</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pptCategoryTag">PPT工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pptCompressMeta">无损清理 / 媒体去重 / Manifest 清单</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="ppt-outline" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pptOutline">
+                  <div class="audio-list-icon"><i data-lucide="sparkles"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pptOutline">AI 生成 PPT 大纲</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pptOutlineDesc">从主题和资料生成结构化演示大纲</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pptCategoryTag">PPT工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pptOutlineMeta">Markdown / JSON / 可接 PPTX 草稿</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="ppt-draft" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pptDraft">
+                  <div class="audio-list-icon"><i data-lucide="presentation"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pptDraft">AI 生成 PPT 草稿 / PPTX</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pptDraftDesc">从资料直接生成可编辑 PPTX 草稿</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.pptCategoryTag">PPT工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pptDraftMeta">可编辑 PPTX / 本地模板 / Manifest 清单</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-section" data-category="image">
+            <div class="tools-page">
+              <div class="tools-hero-text">
+                <span class="tools-eyebrow" data-i18n="home.toolNames.imageEyebrow">Pixel Lab</span>
+                <h2 data-i18n="nav.imageTools">图像工具</h2>
+                <p data-i18n="home.imageCategoryDesc">格式转换、压缩、长图拼接与图标生成，全部本地处理。</p>
+              </div>
+              <div class="audio-search tools-search">
+                <input type="text" class="tools-search-input" data-i18n-placeholder="home.searchPlaceholder" placeholder="搜索工具...">
+                <button class="audio-search-btn tools-search-btn" data-i18n-aria-label="home.searchBtn" aria-label="搜索">
+                  <i data-lucide="search"></i>
+                </button>
+                <button class="audio-clear-btn tools-clear-btn" data-i18n="home.clearSearch" style="display:none;">清除搜索结果</button>
+              </div>
+              <div class="audio-list">
+                <div class="audio-list-item" data-tool="image-crop" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.imgCrop">
+                  <div class="audio-list-icon"><i data-lucide="crop"></i></div>
+                  <div class="audio-list-info"><div class="audio-list-title" data-i18n="home.toolNames.imgCrop">图片裁剪</div><div class="audio-list-desc" data-i18n="home.toolNames.imgCropDesc">自由裁剪尺寸</div></div>
+                  <div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag" data-i18n="home.toolNames.imageCategoryTag">图像工具</span><span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span></div><div class="audio-list-meta">比例预设 / 构图辅助线 / 磁吸居中 / 原图导出</div></div>
+                </div>
+                <div class="audio-list-item" data-tool="bg-removal" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.bgRemoval">
+                  <div class="audio-list-icon"><i data-lucide="scissors"></i></div>
+                  <div class="audio-list-info"><div class="audio-list-title" data-i18n="home.toolNames.bgRemoval">背景移除</div><div class="audio-list-desc" data-i18n="home.toolNames.bgRemovalDesc">AI 一键抠图，发丝级边缘</div></div>
+                  <div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag" data-i18n="home.toolNames.imageCategoryTag">图像工具</span><span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span></div><div class="audio-list-meta" data-i18n="home.toolNames.bgRemovalMeta">AI 抠图 / 边缘羽化 / 透明 PNG 导出</div></div>
+                </div>
+                <div class="audio-list-item" data-tool="image-color-replace" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.imageColorReplace">
+                  <div class="audio-list-icon"><i data-lucide="pipette"></i></div>
+                  <div class="audio-list-info"><div class="audio-list-title" data-i18n="home.toolNames.imageColorReplace">智能颜色替换</div><div class="audio-list-desc" data-i18n="home.toolNames.imageColorReplaceDesc">吸管取样、连通区域保护与自然边缘过渡</div></div>
+                  <div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag" data-i18n="home.toolNames.imageCategoryTag">图像工具</span><span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span></div><div class="audio-list-meta" data-i18n="home.toolNames.imageColorReplaceMeta">智能保护 / 阈值 / 柔化 / 原图导出</div></div>
+                </div>
+                <div class="audio-list-item" data-tool="image-convert" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.imgConvert">
+                  <div class="audio-list-icon"><i data-lucide="arrow-left-right"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.imgConvert">图片格式转换</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.imgConvertDesc">JPG / PNG / WebP / BMP / GIF / SVG 互转</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.imageCategoryTag">图像工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.imgConvertMeta">批量转换 / 保留分辨率</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="image-compress" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.imgCompress">
+                  <div class="audio-list-icon"><i data-lucide="minimize-2"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.imgCompress">图片压缩</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.imgCompressDesc">三档画质 / 批量压缩</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.imageCategoryTag">图像工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.imgCompressMeta">JPG / PNG / WebP / BMP / GIF</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="image-stitch" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.imageStitch"><div class="audio-list-icon"><i data-lucide="panels-top-left"></i></div><div class="audio-list-info"><div class="audio-list-title" data-i18n="home.toolNames.imageStitch">长图拼接</div><div class="audio-list-desc" data-i18n="home.toolNames.imageStitchDesc">纵向 / 横向 / 无缝拼接 / PNG / JPG</div></div><div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag" data-i18n="home.toolNames.imageCategoryTag">图像工具</span><span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span></div><div class="audio-list-meta" data-i18n="home.toolNames.imageStitchMeta">排序队列 / 参考尺寸 / 间距 / 背景色</div></div></div>
+                <div class="audio-list-item" data-tool="icon-gen" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.iconGen">
+                  <div class="audio-list-icon"><i data-lucide="image-plus"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.iconGen">图标生成器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.iconGenDesc">一键生成多尺寸图标并打包</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.imageCategoryTag">图像工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.iconGenMeta">PNG / ICO / 多尺寸 / ZIP</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-section" data-category="audio">
+            <div class="tools-page audio-page">
+              <div class="tools-hero audio-hero">
+                <div class="tools-hero-text">
+                  <span class="tools-eyebrow" data-i18n="home.toolNames.audioEyebrow">Sound Studio</span>
+                  <h2 data-i18n="nav.audioTools">音频工具</h2>
+                  <p data-i18n="home.audioCategoryDesc">音频格式转换、节拍检测、可视化剪辑与音频提取。</p>
+                </div>
+              </div>
+              <div class="audio-search" id="audioSearchWrap">
+                <input type="text" id="audioSearchInput" data-i18n-placeholder="home.audioSearchPlaceholder" placeholder="搜索音频工具...">
+                <button class="audio-search-btn" id="audioSearchBtn" data-i18n-aria-label="home.searchBtn" aria-label="搜索">
+                  <i data-lucide="search"></i>
+                </button>
+                <button class="audio-clear-btn" id="audioClearBtn" data-i18n="home.audioClearSearch" style="display:none;">清除搜索结果</button>
+              </div>
+              <div class="audio-list">
+                <div class="audio-list-item" data-tool="convert" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.audioConvert">
+                  <div class="audio-list-icon"><i data-lucide="arrow-left-right"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.audioConvert">音频文件格式转换</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.audioConvertDesc">MP3 / AAC / WAV / FLAC / ALAC / OGG / WMA</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.audioCategoryTag">音频工具</span>
+                      <span class="tool-badge badge-popular" data-i18n="home.toolNames.badgePopular">热门</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.audioConvertMeta">无损与有损格式互转、批量处理</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="bpm-detect" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.bpmDetect">
+                  <div class="audio-list-icon"><i data-lucide="gauge"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.bpmDetect">BPM 节拍测速器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.bpmDetectDesc">上传音频自动检测 BPM</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.audioCategoryTag">音频工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.bpmDetectMeta">纯音乐 / Beat 节拍速度检测</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="audio-clip" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.audioClip">
+                  <div class="audio-list-icon"><i data-lucide="scissors"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.audioClip">音频剪辑</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.audioClipDesc">波形可视化剪辑、区域选择、导出片段</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.audioCategoryTag">音频工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.audioClipMeta">波形显示 / 播放预览 / 精准裁剪</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="audio-extract" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.audioExtract">
+                  <div class="audio-list-icon"><i data-lucide="file-audio"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.audioExtract">音频提取</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.audioExtractDesc">从视频中提取音频</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.audioCategoryTag">音频工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.audioExtractMeta">MP4 / MOV / MKV 提取音频</div>
+                  </div>
+                </div>
+                <div class="audio-search-footer" id="audioSearchFooter" style="display:none;">
+                  <span data-i18n="home.audioNoMoreResults">没有其他结果了</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-section" data-category="video">
+            <div class="tools-page">
+              <div class="tools-hero-text">
+                <span class="tools-eyebrow" data-i18n="home.toolNames.videoEyebrow">Frame Studio</span>
+                <h2 data-i18n="nav.videoTools">视频工具</h2>
+                <p data-i18n="home.videoCategoryDesc">视频格式转换、高清单帧图与最长 30 秒 GIF。</p>
+              </div>
+              <div class="audio-search tools-search">
+                <input type="text" class="tools-search-input" data-i18n-placeholder="home.searchPlaceholder" placeholder="搜索工具...">
+                <button class="audio-search-btn tools-search-btn" data-i18n-aria-label="home.searchBtn" aria-label="搜索">
+                  <i data-lucide="search"></i>
+                </button>
+                <button class="audio-clear-btn tools-clear-btn" data-i18n="home.clearSearch" style="display:none;">清除搜索结果</button>
+              </div>
+              <div class="audio-list">
+                <div class="audio-list-item" data-tool="video-convert" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.videoConvert">
+                  <div class="audio-list-icon"><i data-lucide="repeat"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.videoConvert">视频格式转换</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.videoConvertDesc">MP4 / AVI / MKV / MOV / WebM / FLV / WMV / TS</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.videoCategoryTag">视频工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.videoConvertMeta">8种格式互转 / 批量处理</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="video-frame" role="button" tabindex="0">
+                  <div class="audio-list-icon"><i data-lucide="image"></i></div><div class="audio-list-info"><div class="audio-list-title">视频高清单帧图</div><div class="audio-list-desc">逐帧定位 / PNG 无损 / 原始分辨率</div></div><div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag">视频工具</span><span class="tool-badge badge-new">新</span></div><div class="audio-list-meta">精准时间轴 / 单帧微调</div></div>
+                </div>
+                <div class="audio-list-item" data-tool="video-gif" role="button" tabindex="0">
+                  <div class="audio-list-icon"><i data-lucide="film"></i></div><div class="audio-list-info"><div class="audio-list-title">视频截取 GIF</div><div class="audio-list-desc">起止帧选择 / 最长 30 秒 / 逐帧预览</div></div><div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag">视频工具</span><span class="tool-badge badge-new">新</span></div><div class="audio-list-meta">调色板优化 / 循环 GIF / 本地导出</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-section" data-category="text">
+            <div class="tools-page">
+              <div class="tools-hero-text">
+                <span class="tools-eyebrow" data-i18n="home.toolNames.textEyebrow">Text Terminal</span>
+                <h2 data-i18n="nav.textTools">文本工具</h2>
+                <p data-i18n="home.textCategoryDesc">音视频转文字、提词、文本统计与格式化。</p>
+              </div>
+              <div class="audio-search tools-search">
+                <input type="text" class="tools-search-input" data-i18n-placeholder="home.searchPlaceholder" placeholder="搜索工具...">
+                <button class="audio-search-btn tools-search-btn" data-i18n-aria-label="home.searchBtn" aria-label="搜索">
+                  <i data-lucide="search"></i>
+                </button>
+                <button class="audio-clear-btn tools-clear-btn" data-i18n="home.clearSearch" style="display:none;">清除搜索结果</button>
+              </div>
+              <div class="audio-list">
+                <div class="audio-list-item" data-tool="markdown-editor" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.markdownEditor">
+                  <div class="audio-list-icon"><i data-lucide="notebook-pen"></i></div>
+                  <div class="audio-list-info"><div class="audio-list-title" data-i18n="home.toolNames.markdownEditor">Markdown 文档编辑器</div><div class="audio-list-desc" data-i18n="home.toolNames.markdownEditorDesc">实时预览、文档目录、Mermaid 与数学公式</div></div>
+                  <div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag" data-i18n="home.toolNames.textCategoryTag">文本工具</span><span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span></div><div class="audio-list-meta" data-i18n="home.toolNames.markdownEditorMeta">GFM / 草稿恢复 / MD·HTML 导出</div></div>
+                </div>
+                <div class="audio-list-item" data-tool="transcription" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.transcription">
+                  <div class="audio-list-icon"><i data-lucide="captions"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.transcription">音视频提取文字</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.transcriptionDesc">离线中英文识别，导出 TXT 与 SRT</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.textCategoryTag">文本工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.transcriptionMeta">本地转写 / 可选 AI 润色 / TXT / SRT</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="teleprompter" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.teleprompter">
+                  <div class="audio-list-icon"><i data-lucide="captions"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.teleprompter">提词器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.teleprompterDesc">平滑滚动台词，支持句子级语音精准跟随</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.textCategoryTag">文本工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.teleprompterMeta">自动滚动 / 语音跟随 / 镜像 / 专注模式</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="text-stats" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.textStats">
+                  <div class="audio-list-icon"><i data-lucide="bar-chart-3"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.textStats">文本统计器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.textStatsDesc">实时统计字符数、单词数、行数、段落数</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.textCategoryTag">文本工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.textStatsMeta">字符统计 / 词数统计 / 行数段落</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="text-format" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.textFormat">
+                  <div class="audio-list-icon"><i data-lucide="wand-2"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.textFormat">文本格式化</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.textFormatDesc">大小写转换、去空行、去多余空格、排序去重</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.textCategoryTag">文本工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.textFormatMeta">大小写 / 去空行 / 排序去重 / 行号</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-section" data-category="calculator">
+            <div class="tools-page">
+              <div class="tools-hero-text">
+                <span class="tools-eyebrow" data-i18n="home.toolNames.calcEyebrow">Math Hub</span>
+                <h2 data-i18n="nav.calculator">计算器工具</h2>
+                <p data-i18n="home.calculatorCategoryDesc">体脂率、时间戳、房贷、利息与密码生成。</p>
+              </div>
+              <div class="audio-search tools-search">
+                <input type="text" class="tools-search-input" data-i18n-placeholder="home.searchPlaceholder" placeholder="搜索工具...">
+                <button class="audio-search-btn tools-search-btn" data-i18n-aria-label="home.searchBtn" aria-label="搜索">
+                  <i data-lucide="search"></i>
+                </button>
+                <button class="audio-clear-btn tools-clear-btn" data-i18n="home.clearSearch" style="display:none;">清除搜索结果</button>
+              </div>
+              <div class="audio-list">
+                <div class="audio-list-item" data-tool="bmi-calc" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.bmiCalc">
+                  <div class="audio-list-icon"><i data-lucide="activity"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.bmiCalc">体脂率计算器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.bmiCalcDesc">BMI、体脂率、基础代谢率</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.calcCategoryTag">计算器</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.bmiCalcMeta">BMI / 体脂率 / 基础代谢</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="timestamp-calc" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.timestampCalc">
+                  <div class="audio-list-icon"><i data-lucide="clock"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.timestampCalc">时间戳计算器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.timestampCalcDesc">时间戳与日期互转</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.calcCategoryTag">计算器</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.timestampCalcMeta">Unix / 毫秒 / 日期</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="mortgage-calc" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.mortgageCalc">
+                  <div class="audio-list-icon"><i data-lucide="landmark"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.mortgageCalc">房贷计算器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.mortgageCalcDesc">等额本息、等额本金、还款明细</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.calcCategoryTag">计算器</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.mortgageCalcMeta">月供 / 利息 / 还款计划</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="interest-calc" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.interestCalc">
+                  <div class="audio-list-icon"><i data-lucide="trending-up"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.interestCalc">利息计算器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.interestCalcDesc">单利、复利、定投收益</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.calcCategoryTag">计算器</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.interestCalcMeta">本利和 / 利息 / 收益率</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="password-gen" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.passwordGen">
+                  <div class="audio-list-icon"><i data-lucide="key-round"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.passwordGen">密码生成器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.passwordGenDesc">简易、中等、终极三种强度</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.calcCategoryTag">计算器</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.passwordGenMeta">安全 / 随机 / 自定义</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-section" data-category="creative">
+            <div class="tools-page">
+              <div class="tools-hero-text">
+                <span class="tools-eyebrow" data-i18n="home.toolNames.creativeEyebrow">Design Studio</span>
+                <h2 data-i18n="nav.creative">创意工具</h2>
+                <p data-i18n="home.creativeCategoryDesc">提取图片主色、联动比较颜色空间，并进行中英文打字测试。</p>
+              </div>
+              <div class="audio-search tools-search">
+                <input type="text" class="tools-search-input" data-i18n-placeholder="home.searchPlaceholder" placeholder="搜索工具...">
+                <button class="audio-search-btn tools-search-btn" data-i18n-aria-label="home.searchBtn" aria-label="搜索">
+                  <i data-lucide="search"></i>
+                </button>
+                <button class="audio-clear-btn tools-clear-btn" data-i18n="home.clearSearch" style="display:none;">清除搜索结果</button>
+              </div>
+              <div class="audio-list">
+                <div class="audio-list-item" data-tool="color-extractor" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.colorExtractor">
+                  <div class="audio-list-icon"><i data-lucide="palette"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.colorExtractor">配色提取器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.colorExtractorDesc">上传图片提取主色调，色卡层叠展示</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.creativeCategoryTag">创意工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.colorExtractorMeta">图片取色 / 色卡导出 / HEX复制</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="color-space-compare" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.colorSpaceCompare">
+                  <div class="audio-list-icon"><i data-lucide="blend"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.colorSpaceCompare">颜色空间对比</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.colorSpaceCompareDesc">八种颜色空间实时联动与色域检查</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.creativeCategoryTag">创意工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.colorSpaceCompareMeta">OKLCH / D65 Lab / RGB / CMYK</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="quick-screenshot" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.quickScreenshot">
+                  <div class="audio-list-icon"><i data-lucide="scan"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.quickScreenshot">快速截图</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.quickScreenshotDesc">窗口捕捉、截图标注与本地文字识别</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags"><span class="audio-tag" data-i18n="home.toolNames.creativeCategoryTag">创意工具</span><span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span></div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.quickScreenshotMeta">Alt+Q / AI 翻译 / 悬浮历史</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="typing-test" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.typingTest">
+                  <div class="audio-list-icon"><i data-lucide="keyboard"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.typingTest">打字测试器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.typingTestDesc">中英文双语词库，多档难度，实时打字速度测试</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.creativeCategoryTag">创意工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.typingTestMeta">中英文词库 / 难度分级 / 音效反馈</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-section" data-category="cleanup">
+            <div class="tools-page">
+              <div class="tools-hero-text">
+                <span class="tools-eyebrow" data-i18n="home.toolNames.cleanupCategoryTag">Cleanup Studio</span>
+                <h2 data-i18n="nav.cleanupTools">清理工具</h2>
+                <p data-i18n="home.cleanupCategoryDesc">扫描大文件、AI 辅助分析与安全清理，本地确认后再移入回收站。</p>
+              </div>
+              <div class="audio-search tools-search">
+                <input type="text" class="tools-search-input" data-i18n-placeholder="home.searchPlaceholder" placeholder="搜索工具...">
+                <button class="audio-search-btn tools-search-btn" data-i18n-aria-label="home.searchBtn" aria-label="搜索">
+                  <i data-lucide="search"></i>
+                </button>
+                <button class="audio-clear-btn tools-clear-btn" data-i18n="home.clearSearch" style="display:none;">清除搜索结果</button>
+              </div>
+              <div class="audio-list">
+                <div class="audio-list-item" data-tool="large-file-cleanup" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.largeFileCleanup">
+                  <div class="audio-list-icon"><i data-lucide="trash-2"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.largeFileCleanup">AI 大文件清理</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.largeFileCleanupDesc">扫描 50MB 以上文件并给出删除建议</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.cleanupCategoryTag">清理工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.largeFileCleanupMeta">视频 / 安装包 / 压缩包 / AI 辅助分析</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="duplicate-file-cleanup" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.duplicateFileCleanup">
+                  <div class="audio-list-icon"><i data-lucide="files"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.duplicateFileCleanup">清理重复文件</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.duplicateFileCleanupDesc">查找内容完全相同的文件，保留一份并移入回收站</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags"><span class="audio-tag" data-i18n="home.toolNames.cleanupCategoryTag">清理工具</span><span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span></div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.duplicateFileCleanupMeta">内容比较 / 分组保留 / 回收站清理</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="c-drive-cleanup" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.cDriveCleanup">
+                  <div class="audio-list-icon"><i data-lucide="hard-drive"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.cDriveCleanup">C盘清理</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.cDriveCleanupDesc">按风险分档清理系统缓存与临时空间</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.cleanupCategoryTag">清理工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.cDriveCleanupMeta">临时文件 / 浏览器缓存 / 系统缓存 / 三档风险</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-section" data-category="ai">
+            <div class="tools-page">
+              <div class="tools-hero-text">
+                <span class="tools-eyebrow" data-i18n="home.toolNames.aiEyebrow">AI Forge</span>
+                <h2 data-i18n="nav.aiTools">AI工具</h2>
+                <p data-i18n="home.aiCategoryDesc">AI 润色、翻译、可编辑 PDF 文档和可编辑数据表。</p>
+              </div>
+              <div class="audio-search tools-search">
+                <input type="text" class="tools-search-input" data-i18n-placeholder="home.searchPlaceholder" placeholder="搜索工具...">
+                <button class="audio-search-btn tools-search-btn" data-i18n-aria-label="home.searchBtn" aria-label="搜索">
+                  <i data-lucide="search"></i>
+                </button>
+                <button class="audio-clear-btn tools-clear-btn" data-i18n="home.clearSearch" style="display:none;">清除搜索结果</button>
+              </div>
+              <div class="audio-list">
+                <div class="audio-list-item" data-tool="pdf-ai-markdown" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.pdfAiMarkdown">
+                  <div class="audio-list-icon"><i data-lucide="scan-eye"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.pdfAiMarkdown">AI PDF 转 Markdown</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.pdfAiMarkdownDesc">逐页识别扫描件、表格和复杂版式</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags"><span class="audio-tag" data-i18n="home.toolNames.aiCategoryTag">AI工具</span><span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span></div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.pdfAiMarkdownMeta">视觉识别 / 全文导读 / Markdown 编辑器</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="ai-polish" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.aiPolish">
+                  <div class="audio-list-icon"><i data-lucide="pen-line"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.aiPolish">AI 文字润色</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.aiPolishDesc">智能分析润色方向，一键优化表达</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.aiCategoryTag">AI工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.aiPolishMeta">智能分析 / 多方向润色 / 对比预览</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="ai-translate" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.aiTranslate">
+                  <div class="audio-list-icon"><i data-lucide="languages"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.aiTranslate">AI 智能翻译</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.aiTranslateDesc">逐句对照翻译，高亮对应关系</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.aiCategoryTag">AI工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.aiTranslateMeta">多语言翻译 / 逐句对照 / 高亮对比</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="ai-doc" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.aiDoc">
+                  <div class="audio-list-icon"><i data-lucide="file-text"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.aiDoc">AI 文档生成</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.aiDocDesc">对话式生成专业 PDF 文档</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.aiCategoryTag">AI工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.aiDocMeta">对话生成 / 自动排版 / 导出 PDF</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="ai-table" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.aiTable">
+                  <div class="audio-list-icon"><i data-lucide="table"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.aiTable">AI 表格生成</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.aiTableDesc">对话式生成数据表与图表</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.aiCategoryTag">AI工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.aiTableMeta">智能数据 / 图表可视化 / 导出 Excel·PDF·PNG·CSV</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-section" data-category="hardware">
+            <div class="tools-page">
+              <div class="tools-hero-text">
+                <span class="tools-eyebrow" data-i18n="home.toolNames.hardwareEyebrow">System Inspector</span>
+                <h2 data-i18n="nav.hardware">硬件工具</h2>
+                <p data-i18n="home.hardwareCategoryDesc">本地只读查看整机、核心硬件、存储与设备信息。</p>
+              </div>
+              <div class="audio-search tools-search">
+                <input type="text" class="tools-search-input" data-i18n-placeholder="home.searchPlaceholder" placeholder="搜索工具...">
+                <button class="audio-search-btn tools-search-btn" data-i18n-aria-label="home.searchBtn" aria-label="搜索">
+                  <i data-lucide="search"></i>
+                </button>
+                <button class="audio-clear-btn tools-clear-btn" data-i18n="home.clearSearch" style="display:none;">清除搜索结果</button>
+              </div>
+              <div class="audio-list">
+                <div class="audio-list-item" data-tool="clipboard-history" role="button" tabindex="0" data-i18n-aria-label="home.clipboardHistory.title">
+                  <div class="audio-list-icon"><i data-lucide="clipboard-list"></i></div>
+                  <div class="audio-list-info"><div class="audio-list-title" data-i18n="home.clipboardHistory.title">剪贴板历史</div><div class="audio-list-desc" data-i18n="home.clipboardHistory.cardDescription">实时记录文字、图片与文件路径</div></div>
+                  <div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag" data-i18n="home.toolNames.hardwareCategoryTag">硬件工具</span><span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span></div><div class="audio-list-meta" data-i18n="home.clipboardHistory.cardMeta">Windows / 本地加密 / 时间线</div></div>
+                </div>
+                <div class="audio-list-item" data-tool="hardware-overview" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.hardwareOverview">
+                  <div class="audio-list-icon"><i data-lucide="layout-dashboard"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.hardwareOverview">整机概览</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.hardwareOverviewDesc">系统、机型、BIOS 与安全状态</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.hardwareCategoryTag">硬件工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.hardwareOverviewMeta">Windows / BIOS / 虚拟化 / 安全启动</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="hardware-cpu-memory" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.hardwareCpuMemory">
+                  <div class="audio-list-icon"><i data-lucide="cpu"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.hardwareCpuMemory">CPU 与内存</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.hardwareCpuMemoryDesc">核心线程、频率、缓存与内存通道</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.hardwareCategoryTag">硬件工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.hardwareCpuMemoryMeta">型号 / 核心线程 / 频率 / 插槽</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="hardware-gpu-display" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.hardwareGpuDisplay">
+                  <div class="audio-list-icon"><i data-lucide="monitor"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.hardwareGpuDisplay">显卡与显示器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.hardwareGpuDisplayDesc">显存、驱动、分辨率与刷新率</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.hardwareCategoryTag">硬件工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.hardwareGpuDisplayMeta">GPU / 驱动 / HDR / 刷新率</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="hardware-mainboard" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.hardwareMainboard">
+                  <div class="audio-list-icon"><i data-lucide="circuit-board"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.hardwareMainboard">主板与固件</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.hardwareMainboardDesc">主板、BIOS/UEFI 与 PCIe 设备</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.hardwareCategoryTag">硬件工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.hardwareMainboardMeta">型号 / BIOS / 芯片组 / PCIe</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="hardware-storage" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.hardwareStorage">
+                  <div class="audio-list-icon"><i data-lucide="hard-drive"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.hardwareStorage">磁盘与健康</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.hardwareStorageDesc">容量、接口、分区与可靠性状态</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.hardwareCategoryTag">硬件工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.hardwareStorageMeta">SMART / 容量 / 分区 / 通电信息</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="hardware-network-devices" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.hardwareNetworkDevices">
+                  <div class="audio-list-icon"><i data-lucide="network"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.hardwareNetworkDevices">网络与设备</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.hardwareNetworkDevicesDesc">网卡、蓝牙、音频、USB 与摄像头</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.hardwareCategoryTag">硬件工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.hardwareNetworkDevicesMeta">链路速率 / 适配器 / 外设清单</div>
+                  </div>
+                </div>
+                <div class="audio-list-item" data-tool="hardware-power-sensors" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.hardwarePowerSensors">
+                  <div class="audio-list-icon"><i data-lucide="battery-charging"></i></div>
+                  <div class="audio-list-info">
+                    <div class="audio-list-title" data-i18n="home.toolNames.hardwarePowerSensors">电源与传感器</div>
+                    <div class="audio-list-desc" data-i18n="home.toolNames.hardwarePowerSensorsDesc">电池健康与硬件可提供的传感器数据</div>
+                  </div>
+                  <div class="audio-list-right">
+                    <div class="audio-list-tags">
+                      <span class="audio-tag" data-i18n="home.toolNames.hardwareCategoryTag">硬件工具</span>
+                      <span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span>
+                    </div>
+                    <div class="audio-list-meta" data-i18n="home.toolNames.hardwarePowerSensorsMeta">电池健康 / 温度 / 风扇 / 驱动支持</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-section" data-category="developer" data-developer-section>
+            <div class="developer-tool-quicklist audio-list">
+              <div class="audio-list-item" data-tool="json-tools" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.jsonTools"><div class="audio-list-icon"><i data-lucide="braces"></i></div><div class="audio-list-info"><div class="audio-list-title">JSON 格式化</div><div class="audio-list-desc">校验、格式化和压缩 JSON 文本</div></div><div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag">开发者工具</span><span class="tool-badge badge-new">新</span></div><div class="audio-list-meta">Pretty Print / Minify / Validate</div></div></div>
+              <div class="audio-list-item" data-tool="base64" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.base64"><div class="audio-list-icon"><i data-lucide="binary"></i></div><div class="audio-list-info"><div class="audio-list-title">Base64 编解码</div><div class="audio-list-desc">安全处理 UTF-8 文本的 Base64 编码与解码</div></div><div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag">开发者工具</span><span class="tool-badge badge-new">新</span></div><div class="audio-list-meta">UTF-8 / Encode / Decode</div></div></div>
+              <div class="audio-list-item" data-tool="url-codec" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.urlCodec"><div class="audio-list-icon"><i data-lucide="link-2"></i></div><div class="audio-list-info"><div class="audio-list-title">URL 编解码</div><div class="audio-list-desc">编码和还原 URL 查询参数与路径片段</div></div><div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag">开发者工具</span><span class="tool-badge badge-new">新</span></div><div class="audio-list-meta">encodeURIComponent / decodeURIComponent</div></div></div>
+              <div class="audio-list-item" data-tool="uuid" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.uuid"><div class="audio-list-icon"><i data-lucide="fingerprint"></i></div><div class="audio-list-info"><div class="audio-list-title">UUID 生成器</div><div class="audio-list-desc">批量生成 RFC 4122 随机 UUID v4</div></div><div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag">开发者工具</span><span class="tool-badge badge-new">新</span></div><div class="audio-list-meta">Crypto RNG / Batch</div></div></div>
+              <div class="audio-list-item" data-tool="jwt" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.jwt"><div class="audio-list-icon"><i data-lucide="key-round"></i></div><div class="audio-list-info"><div class="audio-list-title">JWT 查看器</div><div class="audio-list-desc">本地查看 JWT Header 与 Payload，不验证签名</div></div><div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag">开发者工具</span><span class="tool-badge badge-new">新</span></div><div class="audio-list-meta">Header / Payload / No Verify</div></div></div>
+            </div>
+            <div class="tools-page">
+              <div class="tools-hero-text">
+                <span class="tools-eyebrow" data-i18n="home.toolNames.developerEyebrow">Local Developer Lab</span>
+                <h2 data-i18n="nav.developer">开发者工具</h2>
+                <p data-i18n="home.developerCategoryDesc">本地完成摘要校验、密码算法兼容与认证文件加密。</p>
+              </div>
+              <div class="audio-search tools-search">
+                <input type="text" class="tools-search-input" data-i18n-placeholder="home.searchPlaceholder" placeholder="搜索工具...">
+                <button class="audio-search-btn tools-search-btn" data-i18n-aria-label="home.searchBtn" aria-label="搜索"><i data-lucide="search"></i></button>
+                <button class="audio-clear-btn tools-clear-btn" data-i18n="home.clearSearch" style="display:none;">清除搜索结果</button>
+              </div>
+              <div class="audio-list">
+                <div class="audio-list-item" data-tool="hash-crypto" role="button" tabindex="0" data-i18n-aria-label="home.toolNames.hashCrypto">
+                  <div class="audio-list-icon"><i data-lucide="binary"></i></div>
+                  <div class="audio-list-info"><div class="audio-list-title" data-i18n="home.toolNames.hashCrypto">Hash &amp; Crypto</div><div class="audio-list-desc" data-i18n="home.toolNames.hashCryptoDesc">17 类摘要、对称与非对称密码工具</div></div>
+                  <div class="audio-list-right"><div class="audio-list-tags"><span class="audio-tag" data-i18n="home.toolNames.developerCategoryTag">开发者工具</span><span class="tool-badge badge-new" data-i18n="home.toolNames.badgeNew">新</span></div><div class="audio-list-meta" data-i18n="home.toolNames.hashCryptoMeta">文件 Hash / 国密 / RSA / TKAES</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <aside class="recording-mode-prompt" id="recordingModePrompt" aria-labelledby="recordingModePromptTitle" hidden>
+      <div class="recording-mode-dismissal" id="recordingModeDismissal">
+        <button class="recording-mode-dismiss" id="recordingModeDismiss" type="button" aria-expanded="false" aria-controls="recordingModeDismissMenu" data-i18n-title="common.close" data-i18n-aria-label="common.close"><i data-lucide="x"></i></button>
+        <div class="recording-mode-dismiss-menu" id="recordingModeDismissMenu" hidden>
+          <button type="button" data-recording-mode-dismiss="session" data-i18n="recordingMode.close">关闭</button>
+          <button type="button" data-recording-mode-dismiss="permanent" data-i18n="recordingMode.closeForever">永久关闭</button>
+        </div>
+      </div>
+      <h2 id="recordingModePromptTitle" data-i18n="recordingMode.promptTitle">是否要打开一键记录模式？</h2>
+      <p data-i18n="recordingMode.hint">开启自启动、剪贴板实时监控和截图悬浮历史。记录仅保存在本机，请在复制敏感信息前暂停监控。</p>
+      <div class="recording-mode-prompt-footer">
+        <button class="recording-mode-help" type="button" data-recording-mode-help data-i18n="recordingMode.help">一键记录模式说明</button>
+        <button class="settings-v2-switch" id="recordingModePromptToggle" type="button" aria-pressed="false" disabled data-i18n-aria-label="recordingMode.title"></button>
+      </div>
+    </aside>
+    </div>
+    <script type="module" src="./src/help-data.js"></script>
+    <script type="module" src="./src/main.js"></script>
+
+
+
+        <!-- videoConvertProcessMask mounts with its lazy feature. -->
+
+        <!-- videoConvertSuccessOverlay mounts with its lazy feature. -->
+
+    <!-- API Key Overlay -->
+        <!-- apiKeyOverlay is mounted by src/app/static-template-bootstrap.js. -->
+
+    <!-- AI Key Required Overlay -->
+        <!-- aiKeyRequiredOverlay is mounted by src/app/static-template-bootstrap.js. -->
+        <!-- cDriveCleanupOverlay mounts with its lazy feature. -->
+
+        <!-- cDriveCleanupAdminMask mounts with its lazy feature. -->
+
+        <!-- cDriveCleanupConfirmMask mounts with its lazy feature. -->
+    <!-- Support-author template is mounted by src/app/static-template-bootstrap.js. -->
+    <!-- Update-preview template is mounted by src/app/static-template-bootstrap.js. -->
+    <div class="feature-tool-overlay markdown-editor-overlay" id="markdownEditorOverlay" aria-hidden="true"></div>
+    <div class="feature-tool-overlay color-replace-overlay" id="imageColorReplaceOverlay" aria-hidden="true"></div>
+    <div class="feature-tool-overlay crypto-tool-overlay" id="cryptoToolOverlay" aria-hidden="true"></div>
+    <div class="feature-tool-overlay developer-toolbox-overlay" id="developerToolboxOverlay" aria-hidden="true"></div>
+    <div class="feature-tool-overlay color-space-compare-overlay" id="colorSpaceCompareOverlay" aria-hidden="true"></div>
+    <div class="feature-tool-overlay pdf-merge-v2 excel-to-pdf-overlay" id="excelToPdfOverlay" aria-hidden="true"></div>
+    <div class="feature-tool-overlay teleprompter-overlay pdf-merge-v2" id="teleprompterOverlay" aria-hidden="true"></div>
+    <div class="feature-tool-overlay bg-removal-overlay pdf-merge-v2" id="bgRemovalOverlay" aria-hidden="true"></div>
+    <div class="feature-tool-overlay audio-extract-feature-host" id="audioExtractFeatureOverlay" aria-hidden="true"></div>
+    <div class="feature-tool-overlay audio-convert-feature-host" id="audioConvertFeatureOverlay" aria-hidden="true"></div>
+    <div class="toast" id="favToast"><span id="favToastText"></span></div>
+  </body>
+</html>

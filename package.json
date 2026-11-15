@@ -1,0 +1,18 @@
+{
+  "name": "pdf-three-engine",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stirling-PDF + PDFPatcher + ToolKnit 的能力整合：统一注册表、零依赖网关、单页工作台",
+  "scripts": {
+    "start": "node scripts/dev.mjs gateway",
+    "start:all": "node scripts/dev.mjs all",
+    "check": "node scripts/dev.mjs --check",
+    "test": "node tests/e2e.mjs",
+    "registry": "node integration/registry/build.mjs",
+    "matrix": "node scripts/gen-matrix.mjs",
+    "registry:extract": "python scripts/gen-registry.py"
+  },
+  "engines": {
+    "node": ">=18.17"
+  }
+}

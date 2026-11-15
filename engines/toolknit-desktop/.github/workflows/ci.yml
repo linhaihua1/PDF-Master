@@ -1,0 +1,101 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Build and test
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: toolknit-desktop
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: toolknit-desktop/package-lock.json
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable 2026-08-31
+
+      - name: Install Rust security auditor
+        run: cargo install cargo-audit --locked --version 0.22.2
+
+      - name: Audit Rust dependencies
+        working-directory: toolknit-desktop/src-tauri
+        # RUSTSEC-2024-0429 affects glib, which is only present in Tauri's
+        # Linux dependency graph. ToolKnit's supported release target is Windows.
+        run: cargo audit --target-os windows --target-arch x86_64 -D unsound -D yanked --ignore RUSTSEC-2024-0429
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Prepare locked FFmpeg for native integration tests
+        shell: pwsh
+        run: |
+          $ffmpegDirectory = Join-Path $PWD "src-tauri/resources/ffmpeg"
+          $ffmpegArchive = Join-Path $env:RUNNER_TEMP "ffmpeg-win32-x64.gz"
+          $ffmpegExecutable = Join-Path $ffmpegDirectory "ffmpeg.exe"
+          $ffmpegUrl = "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-win32-x64.gz"
+          $expectedHash = "8883a3dffbd0a16cf4ef95206ea05283f78908dbfb118f73c83f4951dcc06d77"
+
+          New-Item -ItemType Directory -Path $ffmpegDirectory -Force | Out-Null
+          Invoke-WebRequest -Uri $ffmpegUrl -OutFile $ffmpegArchive -MaximumRetryCount 3 -RetryIntervalSec 5
+
+          $actualHash = (Get-FileHash -LiteralPath $ffmpegArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $expectedHash) {
+            throw "FFmpeg archive integrity check failed: expected $expectedHash, got $actualHash"
+          }
+
+          $inputStream = [System.IO.File]::OpenRead($ffmpegArchive)
+          try {
+            $gzipStream = [System.IO.Compression.GZipStream]::new(
+              $inputStream,
+              [System.IO.Compression.CompressionMode]::Decompress
+            )
+            try {
+              $outputStream = [System.IO.File]::Create($ffmpegExecutable)
+              try {
+                $gzipStream.CopyTo($outputStream)
+              } finally {
+                $outputStream.Dispose()
+              }
+            } finally {
+              $gzipStream.Dispose()
+            }
+          } finally {
+            $inputStream.Dispose()
+          }
+
+          & $ffmpegExecutable -version
+
+      - name: Run complete release test suite
+        run: npm run test:release
+
+      - name: Run native tests
+        working-directory: toolknit-desktop/src-tauri
+        run: cargo test --locked

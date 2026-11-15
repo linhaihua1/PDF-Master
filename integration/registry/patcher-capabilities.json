@@ -1,0 +1,122 @@
+{
+  "_comment": "PDFPatcher（PDF 补丁丁，C#/.NET 4.0）独有能力。引擎通过 integration/patcher-cli 包装成命令行后由网关调用；CLI 未构建时这些能力显示为 unavailable，并给出 Stirling 等价替代。",
+  "engine": {
+    "id": "patcher",
+    "name": "PDFPatcher",
+    "upstream": "https://github.com/linhaihua1/PDFPatcher",
+    "runtime": ".NET Framework 4.0+ (Windows)",
+    "entry": "integration/patcher-cli/bin/PDFPatcher.Cli.exe",
+    "probe": { "type": "file-exists" }
+  },
+  "capabilities": [
+    {
+      "id": "patcher.auto-bookmark",
+      "title": "自动生成书签",
+      "desc": "按字号/字体/文本规则识别标题层级，批量生成中文 PDF 书签，支持正则与过滤器链。",
+      "category": "bookmark",
+      "command": "auto-bookmark",
+      "inputs": [{ "name": "file", "type": "file", "required": true }],
+      "options": [
+        { "name": "levelRule", "type": "string", "desc": "标题层级判定规则，如 font-size>=16:1;>=13:2" },
+        { "name": "titlePattern", "type": "string", "desc": "标题文本正则，默认匹配章节编号" },
+        { "name": "maxLevel", "type": "int", "default": 6 }
+      ],
+      "output": "pdf",
+      "fallback": "stirling.add-page-numbers（仅页码，不能生成书签）",
+      "unique": true
+    },
+    {
+      "id": "patcher.bookmark-export",
+      "title": "导出书签",
+      "desc": "把 PDF 书签导出为 XML/文本，可再导入其他文档，支持页码偏移修正。",
+      "category": "bookmark",
+      "command": "bookmark-export",
+      "inputs": [{ "name": "file", "type": "file", "required": true }],
+      "options": [{ "name": "format", "type": "enum", "values": ["xml", "text"], "default": "xml" }],
+      "output": "xml",
+      "fallback": "stirling.extract-bookmarks",
+      "unique": false
+    },
+    {
+      "id": "patcher.bookmark-import",
+      "title": "导入书签",
+      "desc": "从 XML/文本批量写入书签，支持层级、页码偏移、样式（粗体/斜体）保留。",
+      "category": "bookmark",
+      "command": "bookmark-import",
+      "inputs": [
+        { "name": "file", "type": "file", "required": true },
+        { "name": "bookmarkFile", "type": "file", "required": true }
+      ],
+      "options": [{ "name": "pageOffset", "type": "int", "default": 0 }],
+      "output": "pdf",
+      "fallback": "stirling.edit-table-of-contents",
+      "unique": false
+    },
+    {
+      "id": "patcher.font-report",
+      "title": "字体嵌入体检",
+      "desc": "列出每个字体是否嵌入、子集化、编码类型，定位打印/跨设备乱码根因。",
+      "category": "analyze",
+      "command": "font-report",
+      "inputs": [{ "name": "file", "type": "file", "required": true }],
+      "options": [],
+      "output": "json",
+      "fallback": "stirling.analyze-pdf.font-info",
+      "unique": false
+    },
+    {
+      "id": "patcher.extract-images-raw",
+      "title": "提取原始图片",
+      "desc": "按文档内真实分辨率与原始编码（JPEG/JPX/PNG）导出图片，不重采样。",
+      "category": "extract",
+      "command": "extract-images",
+      "inputs": [{ "name": "file", "type": "file", "required": true }],
+      "options": [
+        { "name": "minWidth", "type": "int", "default": 0 },
+        { "name": "minHeight", "type": "int", "default": 0 }
+      ],
+      "output": "zip",
+      "fallback": "stirling.extract-images",
+      "unique": false
+    },
+    {
+      "id": "patcher.inspect-structure",
+      "title": "文档结构探查",
+      "desc": "导出对象树、内容流、页面资源与可疑标记，用于定位损坏、异常体积与排版错乱。",
+      "category": "analyze",
+      "command": "inspect",
+      "inputs": [{ "name": "file", "type": "file", "required": true }],
+      "options": [{ "name": "depth", "type": "int", "default": 3 }],
+      "output": "json",
+      "fallback": "stirling.analyze-pdf.basic-info",
+      "unique": true
+    },
+    {
+      "id": "patcher.crop-page",
+      "title": "按裁剪框裁剪",
+      "desc": "按 CropBox 精确裁剪并同步调整页面尺寸，保留原页面内容不栅格化。",
+      "category": "organize",
+      "command": "crop",
+      "inputs": [{ "name": "file", "type": "file", "required": true }],
+      "options": [
+        { "name": "pages", "type": "string", "default": "1-" },
+        { "name": "margin", "type": "string", "desc": "左,上,右,下（毫米）" }
+      ],
+      "output": "pdf",
+      "fallback": "stirling.crop",
+      "unique": false
+    },
+    {
+      "id": "patcher.remove-restrictions",
+      "title": "解除权限限制",
+      "desc": "在已知口令或无口令情况下移除打印/复制/编辑限制，保留文档内容。",
+      "category": "security",
+      "command": "remove-restrictions",
+      "inputs": [{ "name": "file", "type": "file", "required": true }],
+      "options": [{ "name": "password", "type": "password", "required": false }],
+      "output": "pdf",
+      "fallback": "stirling.remove-password",
+      "unique": false
+    }
+  ]
+}
