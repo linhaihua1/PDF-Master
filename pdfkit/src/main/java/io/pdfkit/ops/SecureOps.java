@@ -9,8 +9,35 @@ import io.pdfkit.util.PdfUtil;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
+import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
+import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureInterface;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.cms.CMSObjectIdentifiers;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.cert.jcajce.JcaCertStore;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.cms.CMSProcessable;
+import org.bouncycastle.cms.CMSSignedData;
+import org.bouncycastle.cms.CMSSignedDataGenerator;
+import org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.math.BigInteger;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.cert.X509Certificate;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Enumeration;
 import java.util.List;
 
 /** 安全类能力：加密、解密、净化。 */
@@ -211,4 +238,178 @@ public final class SecureOps {
                     ctx.report(100, "已移除 " + removed + " 个签名字段");
                 }
             });
+
+    // ================= 证书签名 =================
+
+    public static final Capability SIGN = new Capability(
+            "secure.sign", "证书签名", "安全与合规",
+            "给 PDF 加盖数字签名（PKCS#7）。不提供证书时自动生成自签名证书，可导出后重复使用。",
+            List.of(
+                    Param.text("keystore", "证书文件(.p12/.pfx)", "", "留空=自动生成自签名证书"),
+                    Param.password("storePass", "证书密码", "留空默认 PdfKit123"),
+                    Param.text("alias", "证书别名", "", "留空=取文件里第一个"),
+                    Param.text("cn", "证书名称", "PdfKit 自签名", "仅自签名时生效"),
+                    Param.text("reason", "签名原因", "文档确认"),
+                    Param.text("location", "签名地点", "中国"),
+                    Param.bool("saveCert", "导出自签名证书", true, "自签名时把 .p12 一并保存到输出目录")
+            ),
+            ctx -> {
+                String ksPath = ctx.str("keystore");
+                String pass = ctx.str("storePass", "PdfKit123");
+                String alias = ctx.str("alias");
+                String cn = ctx.str("cn", "PdfKit 自签名");
+                Path selfCert = null;
+
+                PrivateKey key;
+                X509Certificate cert;
+                try {
+                    if (ksPath.isBlank()) {
+                        ctx.report(10, "生成自签名证书");
+                        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+                        kpg.initialize(2048);
+                        KeyPair kp = kpg.generateKeyPair();
+                        X500Name subject = new X500Name("CN=" + cn + ", O=PdfKit, C=CN");
+                        long now = System.currentTimeMillis();
+                        JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(
+                                subject, BigInteger.valueOf(now),
+                                new Date(now - 86_400_000L),
+                                new Date(now + 10L * 365 * 86_400_000L),
+                                subject, kp.getPublic());
+                        ContentSigner cs = new JcaContentSignerBuilder("SHA256WithRSA").build(kp.getPrivate());
+                        cert = new JcaX509CertificateConverter().getCertificate(builder.build(cs));
+                        key = kp.getPrivate();
+
+                        if (ctx.bool("saveCert", true)) {
+                            KeyStore ks = KeyStore.getInstance("PKCS12");
+                            ks.load(null, null);
+                            ks.setKeyEntry("pdfkit", key, pass.toCharArray(), new java.security.cert.Certificate[]{cert});
+                            selfCert = ctx.outDerived("_签名证书", ".p12");
+                            try (OutputStream os = Files.newOutputStream(selfCert)) {
+                                ks.store(os, pass.toCharArray());
+                            }
+                        }
+                    } else {
+                        Path kp2 = Path.of(ksPath);
+                        if (!Files.isReadable(kp2)) {
+                            throw new Err("ERR_NO_CERT", "证书文件读不到：" + ksPath);
+                        }
+                        KeyStore ks = KeyStore.getInstance(
+                                ksPath.toLowerCase().endsWith(".p12") || ksPath.toLowerCase().endsWith(".pfx")
+                                        ? "PKCS12" : KeyStore.getDefaultType());
+                        char[] pw = pass.toCharArray();
+                        try (InputStream in = Files.newInputStream(kp2)) {
+                            ks.load(in, pw);
+                        } catch (Exception e) {
+                            throw new Err("ERR_BAD_CERT", "证书加载失败（密码不对或格式不支持）：" + e.getMessage(), e);
+                        }
+                        String use = alias;
+                        if (use == null || use.isBlank()) {
+                            Enumeration<String> en = ks.aliases();
+                            while (en.hasMoreElements()) {
+                                String a = en.nextElement();
+                                if (ks.isKeyEntry(a)) {
+                                    use = a;
+                                    break;
+                                }
+                            }
+                        }
+                        if (use == null) {
+                            throw new Err("ERR_NO_KEY", "证书里没有可用的私钥条目");
+                        }
+                        key = (PrivateKey) ks.getKey(use, pw);
+                        cert = (X509Certificate) ks.getCertificate(use);
+                        if (key == null || cert == null) {
+                            throw new Err("ERR_NO_KEY", "别名「" + use + "」没有私钥或证书");
+                        }
+                    }
+
+                    ctx.report(40, "写入签名");
+                    PDSignature sig = new PDSignature();
+                    sig.setFilter(PDSignature.FILTER_ADOBE_PPKLITE);
+                    sig.setSubFilter(PDSignature.SUBFILTER_ADBE_PKCS7_DETACHED);
+                    sig.setName(extractCn(cert.getSubjectX500Principal().getName()));
+                    sig.setReason(ctx.str("reason", "文档确认"));
+                    sig.setLocation(ctx.str("location", "中国"));
+                    sig.setSignDate(Calendar.getInstance());
+
+                    SignatureInterface si = content -> {
+                        try {
+                            return cmsSign(content, key, cert);
+                        } catch (Exception e) {
+                            throw new java.io.IOException("CMS 签名失败：" + e.getMessage(), e);
+                        }
+                    };
+                    Path out = ctx.outDerived("_已签名", ".pdf");
+                    try (PDDocument doc = PdfUtil.load(ctx.input(), ctx.str("password"))) {
+                        doc.addSignature(sig, si);
+                        try (OutputStream os = Files.newOutputStream(out)) {
+                            doc.saveIncremental(os);
+                        }
+                    }
+                    ctx.addOutput(out);
+                    if (selfCert != null) {
+                        ctx.addOutput(selfCert);
+                    }
+                    ctx.setResult("签名完成。自签名证书不会被 Adobe 信任，Adobe 会提示「签名者身份未知」"
+                            + "——这是自签名的正常表现，签名本身有效、篡改会失效。商业场景请购买 CA 证书后用「证书文件」参数。");
+                    ctx.report(100, "签名完成");
+                } catch (Err e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new Err("ERR_SIGN_FAILED", "签名失败：" + e.getMessage(), e);
+                }
+            });
+
+    static byte[] cmsSign(InputStream content, PrivateKey key, X509Certificate cert) throws Exception {
+        CMSSignedDataGenerator gen = new CMSSignedDataGenerator();
+        ContentSigner cs = new JcaContentSignerBuilder("SHA256WithRSA").build(key);
+        gen.addSignerInfoGenerator(new JcaSignerInfoGeneratorBuilder(
+                new JcaDigestCalculatorProviderBuilder().build()).build(cs, cert));
+        gen.addCertificates(new JcaCertStore(List.of(cert)));
+        CMSProcessable msg = new CMSProcessable() {
+            @Override
+            public void write(OutputStream out) throws java.io.IOException {
+                content.transferTo(out);
+            }
+
+            @Override
+            public Object getContent() {
+                return content;
+            }
+        };
+        CMSSignedData signed = gen.generate(new TypedData(msg), false);
+        return signed.getEncoded();
+    }
+
+    /** 给 CMSProcessable 套上 data 类型，BouncyCastle 要求实现 CMSTypedData。 */
+    record TypedData(CMSProcessable body) implements org.bouncycastle.cms.CMSTypedData {
+        @Override
+        public ASN1ObjectIdentifier getContentType() {
+            return CMSObjectIdentifiers.data;
+        }
+
+        @Override
+        public void write(OutputStream out) throws java.io.IOException {
+            try {
+                body.write(out);
+            } catch (org.bouncycastle.cms.CMSException e) {
+                throw new java.io.IOException("写入待签名数据失败：" + e.getMessage(), e);
+            }
+        }
+
+        @Override
+        public Object getContent() {
+            return body.getContent();
+        }
+    }
+
+    static String extractCn(String dn) {
+        for (String part : dn.split(",")) {
+            String p = part.trim();
+            if (p.startsWith("CN=")) {
+                return p.substring(3);
+            }
+        }
+        return dn;
+    }
 }

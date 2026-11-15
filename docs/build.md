@@ -1,116 +1,113 @@
-# 三条通道的构建
+# 构建与打包
 
-按需构建，不必三条全通。网关会按实际状态自动判定可用性。
+## 1. 环境要求
 
-## 0. 先体检
+| 组件 | 版本 | 用途 | 本机路径 |
+|---|---|---|---|
+| JDK | 17（LTS） | 编译 + `jpackage` | `C:\dev\jdk-17.0.13` |
+| Gradle | 8.14 | 构建 | `C:\dev\gradle-8.14` |
+| WiX Toolset | 3.14 | `jpackage --type exe` 生成安装包 | `C:\dev\wix314`（需在 PATH 里） |
 
-```bash
-node scripts/dev.mjs --check
-```
+> JDK 选 17 而不是 25：JDK 17 是长期支持版、`jpackage` 功能完整，且不引入新版语法导致维护门槛。Stirling 需要的 JDK 25 在本项目中已不适用。
 
-输出会明确告诉你缺什么，例如：
+WiX 只需在**打安装包**时用；只出绿色版可以不装。
 
-```
-ok   Node 22.22.2
-warn JDK 8 低于要求的 25，Stirling 通道不可运行
-FAIL Stirling 构建产物 — 未构建，先看 docs/build.md
-FAIL PDFPatcher CLI — ...\integration\patcher-cli\bin\PDFPatcher.Cli.exe
-```
-
----
-
-## 1. Stirling-PDF（主力，99 项能力）
-
-**前提：JDK 25**。上游 `build.gradle` 写死 `modernJavaVersion = 25`，用 17 或 21 编不过。
-
-```bash
-# 装 JDK 25 后（Adoptium Temurin / Liberica 均可），确认：
-java -version          # 应显示 25.x
-
-cd engines/stirling-pdf
-
-# Windows 用 gradlew.bat，Linux/macOS 用 ./gradlew
-./gradlew.bat :app:core:bootJar
-
-# 产物默认在 app/core/build/libs/，启动：
-java -jar app/core/build/libs/*.jar
-# 访问 http://127.0.0.1:8080
-```
-
-首次构建要点：
-
-| 事项 | 说明 |
-|---|---|
-| Gradle 9.7.1 | wrapper 会自动下载（约 150 MB），国内网络建议配镜像 |
-| 依赖体积 | Spring Boot + PDFBox + LibreOffice 桥接，约 600 MB 缓存 |
-| 前端 | `frontend/` 是独立 Vite 工程，`bootJar` 会带上构建好的静态资源；只调 API 不必单独构建 |
-| 转换类功能 | `pdf/word`、`file/pdf` 依赖内置 LibreOffice，Windows 上需确认 soffice 可用 |
-
-不想编译的话，官方 Docker 镜像与本机 jar 都可用，只要 `http://127.0.0.1:8080/api/v1/info/status` 能返回即可；网关不关心它怎么起来的。
-
----
-
-## 2. PDFPatcher（中文书签补位，8 项能力）
-
-**前提：.NET Framework 开发工具链**（Visual Studio 2019+ 或 Build Tools，含 .NET Framework 4.0 目标包）。
-仅有运行时不够——`App/Lib` 里的 MuPDFLib / itextsharp 是编译期引用。
+## 2. 一键构建
 
 ```powershell
-# 1) 先编上游本体，产出 PDFPatcher.exe
-msbuild engines\pdfpatcher\PDFPatcher.sln /p:Configuration=Release /p:Platform="Any CPU"
+cd C:\Users\Administrator\Desktop\PDF\pdfkit
 
-# 2) 再编 CLI 包装（引用上一步的 exe）
-msbuild integration\patcher-cli\PatcherCli.csproj /p:Configuration=Release
-# 产物：integration\patcher-cli\bin\PDFPatcher.Cli.exe
+# 编译 + 测试
+.\scripts\build.ps1
+
+# 编译 + 测试 + 绿色版 + 安装包
+.\scripts\build.ps1 -Package
+
+# 跳过测试（仅调试用）
+.\scripts\build.ps1 -SkipTest
 ```
 
-**当前状态：未接线。** `PatcherCli.cs` 里的 8 个命令都是 `throw new NotSupportedException`，
-需要按 `TODO` 注释接上 `PDFPatcher.Processor.*` 的真实调用。原因见 `integration/patcher-cli/README.md`。
+产物位置：
 
-未接线前，这 8 项能力在注册表里标记 `available:false`，并给出 Stirling 的等价替代——不会阻断工作台。
-
----
-
-## 3. ToolKnit Desktop（桌面壳，17 项内置能力）
-
-内置工具是纯前端 pdf-lib 实现，**不需要构建**即可通过工作台调用其能力定义；但要跑它的完整界面需要：
-
-```bash
-cd engines/toolknit-desktop/toolknit-desktop
-npm install            # 36 个依赖，含 @napi-rs/canvas 原生模块
-npm run dev            # Vite 开发服务器
-npm run tauri:dev      # 桌面窗口（需 Rust 工具链）
-```
-
-接入方式（把 PDF 工作台挂成 ToolKnit 里的一个工具页）见 `integration/desktop/README.md`。
-
----
-
-## 4. 验证整合层
-
-```bash
-node tests/e2e.mjs
-```
-
-不需要 Java、不需要 .NET：mock Stirling 实现了状态、合并、页数分析三个端点，
-用来验证网关的上传、排队、落盘、下载、错误处理全链路。14 项断言。
-
-真机联调时把网关指向真实 Stirling 即可：
-
-```bash
-PDF_STIRLING_BASE=http://127.0.0.1:8080 node integration/gateway/server.mjs
-```
-
-## 环境变量
-
-| 变量 | 默认 | 用途 |
+| 产物 | 路径 | 说明 |
 |---|---|---|
-| `PDF_GATEWAY_PORT` | 8931 | 网关端口 |
-| `PDF_GATEWAY_HOST` | 127.0.0.1 | 监听地址，勿改成 0.0.0.0 |
-| `PDF_STIRLING_BASE` | http://127.0.0.1:8080 | Stirling 地址 |
-| `PDF_STIRLING_TIMEOUT` | 600000 | 单次调用超时（ms） |
-| `PDF_PATCHER_CLI` | integration/patcher-cli/bin/PDFPatcher.Cli.exe | CLI 路径 |
-| `PDF_PATCHER_TIMEOUT` | 300000 | CLI 超时（ms） |
-| `PDF_GATEWAY_PARALLEL` | 2 | 并发作业数 |
-| `PDF_MAX_UPLOAD` | 536870912 | 单次上传上限（512 MB） |
-| `PDF_JOBS_ROOT` | .work/jobs | 作业产物目录 |
+| 绿色版 | `dist\PdfKit\PdfKit.exe` | 整个 `PdfKit` 目录可直接拷走 |
+| 安装包 | `dist-installer\PdfKit-1.1.0.exe` | 双击安装，含开始菜单与卸载项 |
+
+## 3. 手工构建（等价命令）
+
+```bash
+export JAVA_HOME="C:/dev/jdk-17.0.13"
+
+# 编译
+/c/dev/gradle-8.14/bin/gradle compileJava
+
+# 测试
+/c/dev/gradle-8.14/bin/gradle test
+
+# 生成可分发的 lib 目录
+/c/dev/gradle-8.14/bin/gradle installDist
+
+# 绿色版
+"$JAVA_HOME/bin/jpackage" --type app-image --name PdfKit --app-version 1.1.0 \
+  --input build/install/pdfkit/lib --main-jar pdfkit-1.1.0.jar --main-class io.pdfkit.App \
+  --dest dist --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m"
+
+# 安装包（需要 WiX 在 PATH）
+export PATH="/c/dev/wix314:$PATH"
+"$JAVA_HOME/bin/jpackage" --type exe --name PdfKit --app-version 1.1.0 \
+  --input build/install/pdfkit/lib --main-jar pdfkit-1.1.0.jar --main-class io.pdfkit.App \
+  --dest dist-installer --win-menu --win-shortcut --win-dir-chooser \
+  --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m"
+```
+
+## 4. 依赖
+
+全部来自 Maven，走阿里云镜像（`build.gradle` 已配）。首次构建需联网下载约 40 MB，之后离线可重复构建。
+
+| 依赖 | 版本 | 许可 | 用途 |
+|---|---|---|---|
+| pdfbox / pdfbox-tools / xmpbox / fontbox | 3.0.5 | Apache 2.0 | PDF 读写、渲染、字体、XMP 元数据 |
+| bcprov-jdk18on / bcpkix-jdk18on | 1.80 | BouncyCastle | AES-256 加密、CMS 签名、X.509 证书 |
+| flatlaf / flatlaf-extras | 3.5.4 | Apache 2.0 | 现代化 Swing 外观 |
+| junit-jupiter | 5.11.4 | EPL 2.0 | 测试（不进入产物） |
+
+## 5. 测试
+
+```bash
+JAVA_HOME=C:/dev/jdk-17.0.13 /c/dev/gradle-8.14/bin/gradle test
+```
+
+35 个端到端用例，覆盖 60 项能力中的 44 项。测试不启界面，直接构造 `Ctx` 调 `cap.op().run(ctx)` —— 这也是「能力层不依赖 UI」这一架构约束的验证手段。
+
+未覆盖的 16 项主要是分析类（输出为文字报告，验证价值低）、以及需要特殊样本的能力（表单、加密、损坏文件）。
+
+报告：`build/reports/tests/test/index.html`
+
+## 6. 能力文档同步
+
+改动 `Registry.java` 或任一 `*Ops.java` 后，务必重跑：
+
+```bash
+python pdfkit/scripts/gen-matrix.py
+```
+
+它会重新读取源码生成 `docs/capability-matrix.md`，保证文档里的能力数与代码一致。若 Registry 注册了但源码里解析不到，脚本会打印警告。
+
+## 7. 版本号变更
+
+版本号出现在三处，必须同步改：
+
+1. `pdfkit/build.gradle` → `version`
+2. `pdfkit/scripts/build.ps1` → `--app-version` 与 `--main-jar`
+3. `README.md` 与本文档里的产物文件名
+
+## 8. 常见问题
+
+| 现象 | 原因 | 处理 |
+|---|---|---|
+| `jpackage` 报 `WiX not found` | WiX 不在 PATH | 把 `C:\dev\wix314` 加进 PATH，或改用 `--type app-image` 只出绿色版 |
+| 构建报「找不到 JDK 17」 | `JAVA_HOME` 未设 | `build.ps1` 里已写死路径，改那一行即可 |
+| 运行 exe 闪退 | 看日志 | `%LOCALAPPDATA%\PdfKit\logs\` 下按天滚动 |
+| 中文变方框 | 字体资源未打进 jar | 检查 `src/main/resources/fonts/NotoSansSC-Regular.ttf` 存在且被 `processResources` 收进产物 |
+| 安装包体积暴涨 | 误把 `dist/` 打进安装包 | `jpackage --input` 只指向 `build/install/pdfkit/lib` |

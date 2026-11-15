@@ -116,6 +116,36 @@ public final class FormOps {
                 }
             });
 
+    public static final Capability READONLY = new Capability(
+            "form.readonly", "锁定/解锁表单", "表单处理",
+            "把全部字段设为只读（防止填完被改），或解除只读恢复可编辑。",
+            List.of(Param.choice("mode", "操作", "设为只读", "设为只读", "解除只读")),
+            ctx -> {
+                boolean lock = !"解除只读".equals(ctx.str("mode", "设为只读"));
+                try (PDDocument doc = PdfUtil.load(ctx.input(), ctx.str("password"))) {
+                    var form = doc.getDocumentCatalog().getAcroForm();
+                    if (form == null) {
+                        throw new Err("ERR_NO_FORM", "这个 PDF 没有表单字段");
+                    }
+                    int n = 0;
+                    for (PDField f : iterable(form.getFieldTree())) {
+                        try {
+                            f.setReadOnly(lock);
+                            n++;
+                        } catch (Exception e) {
+                            // 个别字段类型不支持只读时跳过，不影响整体
+                        }
+                    }
+                    if (n == 0) {
+                        throw new Err("ERR_NO_FORM", "没有可操作的字段");
+                    }
+                    Path out = ctx.outDerived(lock ? "_表单已锁定" : "_表单已解锁", ".pdf");
+                    PdfUtil.save(doc, out);
+                    ctx.addOutput(out);
+                    ctx.report(100, (lock ? "已锁定 " : "已解锁 ") + n + " 个字段");
+                }
+            });
+
     private static List<PDField> iterable(Iterable<PDField> tree) {
         List<PDField> list = new java.util.ArrayList<>();
         for (PDField f : tree) {

@@ -1,186 +1,213 @@
-# 能力矩阵
+# 能力矩阵（60 项）
 
-> 自动生成于 2026-11-15 04:58:04，来源 `integration/registry/capabilities.json`。
-> 重新生成：`node scripts/gen-matrix.mjs`
+> 本文件由 `pdfkit/scripts/gen-matrix.py` 从源码自动生成，请勿手工编辑。
+> 生成依据：`Registry.java` 的注册顺序 + 各 `*Ops.java` 的 `Capability` 声明。
 
-合计 **124** 项：Stirling 99 · PDFPatcher 8 · ToolKnit 17
+总计 **60 项**，分布在 8 个分类。
 
-## 页面组织（22）
+## 汇总
 
-| 能力 | 引擎 | 入口 | 输出 | 备注 |
-|---|---|---|---|---|
-| 裁剪页面 | ToolKnit | toolId: pdf-crop | pdf | 离线可用 |
-| 合并 PDF | ToolKnit | toolId: pdf-merge | pdf | 离线可用 |
-| 旋转页面 | ToolKnit | toolId: pdf-rotate | pdf | 离线可用 |
-| 拆分 PDF | ToolKnit | toolId: pdf-split | pdf | 离线可用 |
-| 按裁剪框裁剪 | PDFPatcher | cli: crop | pdf | 回落 stirling.crop |
-| 裁剪 | Stirling | `POST /api/v1/general/crop` | pdf |  |
-| 编辑目录 | Stirling | `POST /api/v1/general/edit-table-of-contents` | pdf |  |
-| 导出书签 | Stirling | `POST /api/v1/general/extract-bookmarks` | xml |  |
-| 合并 | Stirling | `POST /api/v1/general/merge-pdfs` | pdf |  |
-| 多页排版 | Stirling | `POST /api/v1/general/multi-page-layout` | pdf |  |
-| 叠加文档 | Stirling | `POST /api/v1/general/overlay-pdfs` | pdf |  |
-| 重排页面 | Stirling | `POST /api/v1/general/rearrange-pages` | pdf |  |
-| 删除页面 | Stirling | `POST /api/v1/general/remove-pages` | pdf |  |
-| 海报分块打印 | Stirling | `POST /api/v1/general/split-for-poster-print` | pdf |  |
-| 移除图片 | Stirling | `POST /api/v1/general/remove-image-pdf` | pdf |  |
-| 旋转 | Stirling | `POST /api/v1/general/rotate-pdf` | pdf |  |
-| 缩放页面 | Stirling | `POST /api/v1/general/scale-pages` | pdf |  |
-| 多页拼单页 | Stirling | `POST /api/v1/general/pdf-to-single-page` | pdf |  |
-| 按分节符拆分 | Stirling | `POST /api/v1/general/split-pdf-by-sections` | pdf |  |
-| 按大小/数量拆分 | Stirling | `POST /api/v1/general/split-by-size-or-count` | zip |  |
-| 按章节拆分 | Stirling | `POST /api/v1/general/split-pdf-by-chapters` | zip |  |
-| 拆分 | Stirling | `POST /api/v1/general/split-pages` | zip |  |
+| 分类 | 项数 |
+|---|---|
+| 页面组织 | 18 |
+| 内容编辑 | 15 |
+| 格式转换 | 7 |
+| 表单处理 | 3 |
+| 书签与目录 | 3 |
+| 安全与合规 | 8 |
+| 读取与分析 | 3 |
+| 优化与修复 | 3 |
+| **合计** | **60** |
 
-## 编辑与标注（31）
+## 页面组织（18 项）
 
-| 能力 | 引擎 | 入口 | 输出 | 备注 |
-|---|---|---|---|---|
-| PDF 编辑器 | ToolKnit | toolId: pdf-editor | pdf | 离线可用 |
-| 添加页码 | ToolKnit | toolId: pdf-page-number | pdf | 离线可用 |
-| 做旧扫描件 | ToolKnit | toolId: pdf-to-scan | pdf | 离线可用 |
-| 添加注释 | Stirling | `POST /api/v1/misc/add-comments` | pdf |  |
-| 添加图像 | Stirling | `POST /api/v1/misc/add-image` | pdf |  |
-| 添加页码 | Stirling | `POST /api/v1/misc/add-page-numbers` | pdf |  |
-| 添加附件 | Stirling | `POST /api/v1/misc/add-attachments` | pdf |  |
-| 批量处理附件 | Stirling | `POST /api/v1/misc/batch-process-attachments` | pdf |  |
-| 删除附件 | Stirling | `POST /api/v1/misc/delete-attachment` | pdf |  |
-| 导出附件 | Stirling | `POST /api/v1/misc/extract-attachments` | zip |  |
-| 导出单个附件 | Stirling | `POST /api/v1/misc/extract-single-attachment` | pdf |  |
-| 列出附件 | Stirling | `POST /api/v1/misc/list-attachments` | json |  |
-| 重命名附件 | Stirling | `POST /api/v1/misc/rename-attachment` | pdf |  |
-| 智能重命名 | Stirling | `POST /api/v1/misc/auto-rename` | pdf |  |
-| 自动纠偏 | Stirling | `POST /api/v1/misc/auto-rotate-pdf` | pdf |  |
-| 自动拆分 | Stirling | `POST /api/v1/misc/auto-split-pdf` | pdf |  |
-| 删除空白页 | Stirling | `POST /api/v1/misc/remove-blanks` | pdf |  |
-| 压缩 | Stirling | `POST /api/v1/misc/compress-pdf` | pdf |  |
-| 解压 PDF | Stirling | `POST /api/v1/misc/decompress-pdf` | pdf |  |
-| 提取扫描图像 | Stirling | `POST /api/v1/misc/extract-image-scans` | pdf |  |
-| 提取图像 | Stirling | `POST /api/v1/misc/extract-images` | zip |  |
-| 展平 | Stirling | `POST /api/v1/misc/flatten` | pdf |  |
-| 修改元数据 | Stirling | `POST /api/v1/misc/update-metadata` | pdf |  |
-| OCR/扫描清理 | Stirling | `POST /api/v1/misc/ocr-pdf` | pdf |  |
-| 创建组合文档 | Stirling | `POST /api/v1/misc/create-portfolio` | pdf |  |
-| 扁平化组合文档 | Stirling | `POST /api/v1/misc/flatten-portfolio` | pdf |  |
-| 修复 | Stirling | `POST /api/v1/misc/repair` | pdf |  |
-| 替换/反色 | Stirling | `POST /api/v1/misc/replace-invert-pdf` | pdf |  |
-| 扫描件效果 | Stirling | `POST /api/v1/misc/scanner-effect` | pdf |  |
-| 添加印章 | Stirling | `POST /api/v1/misc/add-stamp` | pdf |  |
-| 移除表单字段只读属性 | Stirling | `POST /api/v1/misc/unlock-pdf-forms` | pdf |  |
+| # | 能力 | 能力 ID | 说明 |
+|---|---|---|---|
+| 1 | 合并 PDF | `organize.merge` | 把多个 PDF 按选择顺序合并成一个文件，页序与源文件一致。 |
+| 2 | 拆分 PDF | `organize.split` | 按每 N 页拆成多个文件，或按指定页码范围拆成单个文件。 |
+| 3 | 旋转页面 | `organize.rotate` | 顺时针旋转全部或指定页面的显示方向。 |
+| 4 | 裁剪页面 | `organize.crop` | 按毫米为单位裁掉四周留白，或统一裁成指定尺寸。 |
+| 5 | 删除页面 | `organize.delete-pages` | 删除指定页面，其余页面保持原顺序。 |
+| 6 | 提取页面 | `organize.extract` | 只保留指定页面，生成新文件，源文件不变。 |
+| 7 | 重排页面 | `organize.reorder` | 按输入顺序重排页面，可重复某页实现「复制页」。 |
+| 8 | 缩放页面 | `organize.scale` | 按百分比缩放页面内容，可选同时调整纸张尺寸。 |
+| 9 | 按章节拆分 | `organize.split-by-bookmark` | 按书签把文档拆成多个文件，每个一级（或指定级）章节一个文件。 |
+| 10 | 多页排版（N-up） | `organize.nup` | 把多页缩小排到一页上，常用于省纸打印、讲义、拼版。 |
+| 11 | 按大小拆分 | `organize.split-by-size` | 按目标文件大小拆成多个 PDF，适合按邮件附件上限分批发送。 |
+| 12 | 叠加文档 | `organize.overlay` | 把第 2 个文件作为叠加层盖到第 1 个文件的每一页上（信纸、模板、印章页常用）。 |
+| 13 | 海报分块打印 | `layout.poster` | 把一页放大切成多张纸，打印后拼接成海报。每块可留重叠边便于对齐。 |
+| 14 | 小册子拼版 | `layout.booklet` | 按骑马钉顺序把页面排成双页，双面打印后对折即成本子。页数会自动补空白到 4 的倍数。 |
+| 15 | 按文本筛选页面 | `filter.text` | 保留（或排除）包含指定关键词/正则的页面，生成新文件。 |
+| 16 | 按尺寸筛选页面 | `filter.size` | 只保留指定方向的页面（竖版/横版）或指定纸张尺寸的页面。 |
+| 17 | 删除空白页 | `filter.blank` | 移除没有文字内容的空白页，扫描件产生的空白页也能识别。 |
+| 18 | 按有无图片筛选 | `filter.image` | 挑出含图片的页（如插图、扫描页）或只有文字的页，单独导出成一个文件。 |
 
-## 格式转换（20）
+<details><summary>参数明细</summary>
 
-| 能力 | 引擎 | 入口 | 输出 | 备注 |
-|---|---|---|---|---|
-| Excel 转 PDF | ToolKnit | toolId: excel-to-pdf | pdf | 离线可用 |
-| 图片转 PDF | ToolKnit | toolId: image-to-pdf | pdf | 离线可用 |
-| AI 增强转 Markdown | ToolKnit | toolId: pdf-ai-markdown | pdf |  |
-| PDF 转 Markdown | ToolKnit | toolId: pdf-text-markdown | pdf | 离线可用 |
-| PDF 转图片 | ToolKnit | toolId: pdf-to-image | pdf | 离线可用 |
-| PDF 转 Word | ToolKnit | toolId: pdf-to-word | pdf |  |
-| CBR 转 PDF | Stirling | `POST /api/v1/convert/cbr/pdf` | pdf |  |
-| CBZ 转 PDF | Stirling | `POST /api/v1/convert/cbz/pdf` | pdf |  |
-| 图片转 PDF | Stirling | `POST /api/v1/convert/img/pdf` | pdf |  |
-| PDF 转 CBR | Stirling | `POST /api/v1/convert/pdf/cbr` | pdf |  |
-| PDF 转 CBZ | Stirling | `POST /api/v1/convert/pdf/cbz` | pdf |  |
-| PDF 转图片 | Stirling | `POST /api/v1/convert/pdf/img` | zip |  |
-| PDF 转 EPUB | Stirling | `POST /api/v1/convert/pdf/epub` | epub |  |
-| PDF 转 Excel | Stirling | `POST /api/v1/convert/pdf/xlsx` | xlsx |  |
-| Office 转 PDF | Stirling | `POST /api/v1/convert/file/pdf` | pdf |  |
-| 电子书转 PDF | Stirling | `POST /api/v1/convert/ebook/pdf` | pdf |  |
-| PDF 转 CSV | Stirling | `POST /api/v1/convert/pdf/csv` | csv |  |
-| PDF 转视频 | Stirling | `POST /api/v1/convert/pdf/video` | pdf |  |
-| PDF 转矢量图 | Stirling | `POST /api/v1/convert/pdf/vector` | pdf |  |
-| 矢量图转 PDF | Stirling | `POST /api/v1/convert/vector/pdf` | pdf |  |
+- **合并 PDF**：保留书签（bool）
+- **拆分 PDF**：拆分方式（choice，默认 按页数）；每几页一个文件（num，默认 10）；页码范围（text）
+- **旋转页面**：旋转角度（choice，默认 90）；作用页（text）
+- **裁剪页面**：上边距(mm)（num，默认 0）；下边距(mm)（num，默认 0）；左边距(mm)（num，默认 0）；右边距(mm)（num，默认 0）；作用页（text）
+- **删除页面**：要删除的页（text）
+- **提取页面**：要保留的页（text）
+- **重排页面**：新页序（text）
+- **缩放页面**：缩放比例(%)（num，默认 100）；作用页（text）
+- **按章节拆分**：按第几级书签（num，默认 1）；文件名带章节标题（bool）
+- **多页排版（N-up）**：每页排几页（choice，默认 2×2（4页））；纸张（choice，默认 A4 竖版）；页边距(mm)（num，默认 8）；格间距(mm)（num，默认 4）；画分隔线（bool）
+- **按大小拆分**：每个文件不超过(MB)（num，默认 10）
+- **叠加文档**：叠加到（choice，默认 全部页）；叠加层透明度(%)（num，默认 100）
+- **海报分块打印**：横向切几块（num，默认 2）；纵向切几块（num，默认 2）；重叠(mm)（num，默认 5）；打印对位标记（bool）；作用页（text，默认 1）
+- **小册子拼版**：中缝宽度(mm)（num，默认 0）；画中缝参考线（bool）
+- **按文本筛选页面**：关键词或正则（text）；按正则解释（bool）；反向：排除匹配页（bool）；区分大小写（bool）
+- **按尺寸筛选页面**：筛选条件（choice，默认 竖版）
+- **删除空白页**：最少字符数（num，默认 3）；把含图片的页也算非空（bool）
+- **按有无图片筛选**：保留（choice，默认 含图片的页）
 
-## 压缩与优化（2）
+</details>
 
-| 能力 | 引擎 | 入口 | 输出 | 备注 |
-|---|---|---|---|---|
-| 压缩 PDF | ToolKnit | toolId: pdf-compress | pdf | 离线可用 |
-| 画质增强 | ToolKnit | toolId: pdf-enhance | pdf | 离线可用 |
+## 内容编辑（15 项）
 
-## 安全与签名（17）
+| # | 能力 | 能力 ID | 说明 |
+|---|---|---|---|
+| 1 | 添加页码 | `edit.page-number` | 在页面指定位置插入页码，支持中文模板与起始序号。 |
+| 2 | 添加水印 | `edit.watermark` | 在页面上叠加文字水印，可调角度、透明度、字号与颜色深浅。 |
+| 3 | 修改元数据 | `edit.metadata` | 修改标题、作者、主题、关键词等文档属性。 |
+| 4 | 展平表单 | `edit.flatten` | 把可填写的表单字段固化进页面内容，之后不可再编辑，文字仍可选中。 |
+| 5 | 添加印章 | `edit.stamp` | 在指定位置盖文字印章（圆形红章样式），可调大小与颜色。 |
+| 6 | 插入图片 | `edit.add-image` | 在页面指定位置插入图片（签名、logo、二维码等），支持等比缩放。 |
+| 7 | 页眉页脚 | `edit.header-footer` | 在页眉/页脚左中右六个位置写文字，可放公司名、文档标题、页码。占位符 {page} {pages} {title}。 |
+| 8 | 反色 / 夜间阅读 | `edit.invert` | 把页面转为深底浅色，适合夜间阅读。注意：处理后该页变为图片，文字不可搜索。 |
+| 9 | 做旧扫描件效果 | `edit.scan-effect` | 给页面加上扫描质感（灰底、噪点、轻微倾斜），用于需要「看起来像扫描件」的场景。 |
+| 10 | 列出附件 | `attachment.list` | 查看 PDF 内嵌的全部附件（文件名、大小、修改时间）。 |
+| 11 | 添加附件 | `attachment.add` | 把一个外部文件嵌入 PDF。附件随 PDF 一起传输，常见于合同、发票的佐证材料。 |
+| 12 | 导出全部附件 | `attachment.extract` | 把 PDF 内嵌的所有附件导出到输出目录下的文件夹。 |
+| 13 | 导出注释清单 | `annot.export` | 把全部批注、便签、高亮导出成 CSV，含页码、类型、作者、内容、创建时间。 |
+| 14 | 添加便签 | `annot.add` | 在指定页的指定位置插入一条便签注释，可填内容与作者。 |
+| 15 | 清除注释 | `annot.strip` | 删除全部注释，或只删某一类（高亮、便签、图章等）。打印/归档前常用。 |
 
-| 能力 | 引擎 | 入口 | 输出 | 备注 |
-|---|---|---|---|---|
-| 解密 PDF | ToolKnit | toolId: pdf-decrypt | pdf | 离线可用 |
-| 加密 PDF | ToolKnit | toolId: pdf-encrypt | pdf | 离线可用 |
-| 解除权限限制 | PDFPatcher | cli: remove-restrictions | pdf | 回落 stirling.remove-password |
-| 添加密码 | Stirling | `POST /api/v1/security/add-password` | pdf |  |
-| 准备加密会话 | Stirling | `POST /api/v1/security/prepare-pdf-session` | pdf |  |
-| 移除密码 | Stirling | `POST /api/v1/security/remove-password` | pdf |  |
-| 恢复加密保护 | Stirling | `POST /api/v1/security/restore-pdf-protection` | pdf |  |
-| 自动涂黑 | Stirling | `POST /api/v1/security/auto-redact` | pdf |  |
-| 手动涂黑 | Stirling | `POST /api/v1/security/redact` | pdf |  |
-| 执行涂黑 | Stirling | `POST /api/v1/security/redact-execute` | pdf |  |
-| 移除证书签名 | Stirling | `POST /api/v1/security/remove-cert-sign` | pdf |  |
-| 净化 PDF | Stirling | `POST /api/v1/security/sanitize-pdf` | pdf |  |
-| 时间戳 | Stirling | `POST /api/v1/security/timestamp-pdf` | pdf |  |
-| 合规校验 | Stirling | `POST /api/v1/security/validate-compliance` | pdf |  |
-| 验证签名 | Stirling | `POST /api/v1/security/validate-signature` | pdf |  |
-| 校验 PDF | Stirling | `POST /api/v1/security/verify-pdf` | pdf |  |
-| 添加水印 | Stirling | `POST /api/v1/security/add-watermark` | pdf |  |
+<details><summary>参数明细</summary>
 
-## 内容提取（1）
+- **添加页码**：位置（choice，默认 底部居中）；页码格式（text，默认 第 {page} 页 / 共 {pages} 页）；起始页（num，默认 1）；起始序号（num，默认 1）；字号（num，默认 10）；边距(mm)（text，默认 12）；作用页（text）
+- **添加水印**：水印文字（text，默认 内部资料）；字号（num，默认 48）；旋转角度（choice，默认 45）；透明度(%)（num，默认 15）；颜色（choice，默认 灰色）；平铺（bool）
+- **修改元数据**：标题（text）；作者（text）；主题（text）；关键词（text）；清空全部元数据（bool）
+- **展平表单**：同时移除字段定义（bool）
+- **添加印章**：印章文字（text，默认 内部审批）；位置（choice，默认 右下角）；印章直径(mm)（num，默认 35）；颜色（choice，默认 红色）；透明度(%)（num，默认 85）；作用页（text）
+- **插入图片**：图片路径（text）；位置（choice，默认 右下角）；宽度(mm)（num，默认 40）；边距(mm)（num，默认 20）；作用页（text，默认 1）
+- **页眉页脚**：页眉左（text）；页眉中（text）；页眉右（text）；页脚左（text，默认 {title}）；页脚中（text）；页脚右（text，默认 {page} / {pages}）；字号（num，默认 9）；边距(mm)（num，默认 12）；首页不显示（bool）；页眉页脚画横线（bool）
+- **反色 / 夜间阅读**：模式（choice，默认 反色）；清晰度（num，默认 150）；作用页（text）
+- **做旧扫描件效果**：清晰度（num，默认 150）；倾斜角度(度)（num，默认 1）；噪点强度（num，默认 8）；灰色纸底（bool）
+- **添加附件**：要附加的文件路径（text）
+- **导出注释清单**：导出 CSV 文件（bool）
+- **添加便签**：作用页（text，默认 1）；横向位置(%)（num，默认 85）；纵向位置(%)（num，默认 90）；注释内容（text，默认 请复核此处）；作者（text，默认 PdfKit）
+- **清除注释**：清除范围（choice，默认 全部注释）
 
-| 能力 | 引擎 | 入口 | 输出 | 备注 |
-|---|---|---|---|---|
-| 提取原始图片 | PDFPatcher | cli: extract-images | zip | 回落 stirling.extract-images |
+</details>
 
-## 书签目录（3）
+## 格式转换（7 项）
 
-| 能力 | 引擎 | 入口 | 输出 | 备注 |
-|---|---|---|---|---|
-| 自动生成书签 | PDFPatcher | cli: auto-bookmark | pdf | 独有 |
-| 导出书签 | PDFPatcher | cli: bookmark-export | xml | 回落 stirling.extract-bookmarks |
-| 导入书签 | PDFPatcher | cli: bookmark-import | pdf | 回落 stirling.edit-table-of-contents |
+| # | 能力 | 能力 ID | 说明 |
+|---|---|---|---|
+| 1 | PDF 转图片 | `convert.pdf-to-image` | 把每页渲染成 PNG 或 JPG，可选清晰度。多页输出到同名文件夹。 |
+| 2 | 图片转 PDF | `convert.image-to-pdf` | 把多张图片按选择顺序合成一个 PDF，可统一纸张或按原图尺寸。 |
+| 3 | PDF 转文本 | `convert.pdf-to-text` | 提取全部文字为 .txt，支持保留版面顺序与分页标记。 |
+| 4 | 提取内嵌图片 | `convert.extract-images` | 把 PDF 里嵌入的原图逐张导出（保持原始像素，不做二次压缩）。 |
+| 5 | PDF 转多页 TIFF | `convert.toTiff` | 把全部页面输出成一个多页 TIFF。归档、传真、老系统交付常用。 |
+| 6 | PDF 转 Markdown | `convert.toMarkdown` | 按字号识别标题层级，输出 .md 文件。适合技术文档、手册再编辑。表格转为空行分隔的纯文本。 |
+| 7 | PDF 转 Word | `convert.toWord` | 生成可编辑 .docx（标题按字号分级、段落按行还原）。不做像素级还原，图片不嵌入。 |
 
-## 分析与体检（10）
+<details><summary>参数明细</summary>
 
-| 能力 | 引擎 | 入口 | 输出 | 备注 |
-|---|---|---|---|---|
-| 字体嵌入体检 | PDFPatcher | cli: font-report | json | 回落 stirling.analyze-pdf.font-info |
-| 文档结构探查 | PDFPatcher | cli: inspect | json | 独有 |
-| 注释信息 | Stirling | `POST /api/v1/analysis/annotation-info` | json |  |
-| 基础信息 | Stirling | `POST /api/v1/analysis/basic-info` | json |  |
-| 文档属性 | Stirling | `POST /api/v1/analysis/document-properties` | json |  |
-| 字体信息 | Stirling | `POST /api/v1/analysis/font-info` | json |  |
-| 表单字段 | Stirling | `POST /api/v1/analysis/form-fields` | json |  |
-| 页数统计 | Stirling | `POST /api/v1/analysis/page-count` | json |  |
-| 页面尺寸 | Stirling | `POST /api/v1/analysis/page-dimensions` | json |  |
-| 加密信息 | Stirling | `POST /api/v1/analysis/security-info` | json |  |
+- **PDF 转图片**：格式（choice，默认 PNG）；清晰度(DPI)（num，默认 150）；导出范围（choice，默认 全部）；自定义页码（text）；JPG 质量（num，默认 85）
+- **图片转 PDF**：纸张（choice，默认 按原图）；图片适配（choice，默认 等比缩放居中）；页边距(mm)（num，默认 0）；压缩图片（bool）
+- **PDF 转文本**：保留版面位置（bool）；分页标记（bool）
+- **提取内嵌图片**：格式（choice，默认 PNG）；最小边长(px)（num，默认 32）
+- **PDF 转多页 TIFF**：分辨率（num，默认 200）；灰度(1)或彩色(0)（num，默认 0）；压缩方式（choice，默认 LZW）
+- **PDF 转 Markdown**：最大标题层级（num，默认 3）；保留分页标记（bool）
+- **PDF 转 Word**：最大标题层级（num，默认 3）；正文字号(pt)（num，默认 10）
 
-## 筛选与批处理（6）
+</details>
 
-| 能力 | 引擎 | 入口 | 输出 | 备注 |
-|---|---|---|---|---|
-| 按图片筛选 | Stirling | `POST /api/v1/filter/filter-contains-image` | pdf |  |
-| 按文本筛选 | Stirling | `POST /api/v1/filter/filter-contains-text` | pdf |  |
-| 按文件大小筛选 | Stirling | `POST /api/v1/filter/filter-file-size` | pdf |  |
-| 按页数筛选 | Stirling | `POST /api/v1/filter/filter-page-count` | pdf |  |
-| 按页面方向筛选 | Stirling | `POST /api/v1/filter/filter-page-rotation` | pdf |  |
-| 按页面尺寸筛选 | Stirling | `POST /api/v1/filter/filter-page-size` | pdf |  |
+## 表单处理（3 项）
 
-## 自动化管线（1）
+| # | 能力 | 能力 ID | 说明 |
+|---|---|---|---|
+| 1 | 读取表单字段 | `form.read` | 列出全部 AcroForm 字段的名称、类型、当前值、是否必填。 |
+| 2 | 填充表单 | `form.fill` | 按「字段名=值」逐行填写表单，支持中文字段值。 |
+| 3 | 锁定/解锁表单 | `form.readonly` | 把全部字段设为只读（防止填完被改），或解除只读恢复可编辑。 |
 
-| 能力 | 引擎 | 入口 | 输出 | 备注 |
-|---|---|---|---|---|
-| 流水线 | Stirling | `POST /api/v1/pipeline/handleData` | pdf |  |
+<details><summary>参数明细</summary>
 
-## 其他（11）
+- **读取表单字段**：同时导出 CSV（bool）
+- **填充表单**：字段值（text）；填写后展平（bool）
+- **锁定/解锁表单**：操作（choice，默认 设为只读）
 
-| 能力 | 引擎 | 入口 | 输出 | 备注 |
-|---|---|---|---|---|
-| 小册子拼版 | Stirling | `POST /booklet-imposition` | pdf |  |
-| 证书签名 | Stirling | `POST /cert-sign` | pdf |  |
-| 添加字段 | Stirling | `POST /add-fields` | pdf |  |
-| 删除字段 | Stirling | `POST /delete-fields` | pdf |  |
-| 编辑字段 | Stirling | `POST /edit-fields` | pdf |  |
-| 表单导出 CSV | Stirling | `POST /extract-csv` | pdf |  |
-| 表单导出 Excel | Stirling | `POST /extract-xlsx` | pdf |  |
-| 读取表单字段 | Stirling | `POST /fields` | pdf |  |
-| 带坐标字段 | Stirling | `POST /fields-with-coordinates` | pdf |  |
-| 填充表单 | Stirling | `POST /fill` | pdf |  |
-| 修改字段 | Stirling | `POST /modify-fields` | pdf |  |
+</details>
+
+## 书签与目录（3 项）
+
+| # | 能力 | 能力 ID | 说明 |
+|---|---|---|---|
+| 1 | 自动生成书签 | `bookmark.auto` | 按字号与加粗特征识别标题，自动生成多级书签。适合技术手册、报告、论文。 |
+| 2 | 导出书签 | `bookmark.export` | 把书签树导出为 XML，便于备份或编辑后重新导入。 |
+| 3 | 导入书签 | `bookmark.import` | 从导出的 XML 恢复书签树，覆盖原有书签。 |
+
+<details><summary>参数明细</summary>
+
+- **自动生成书签**：最大层级（num，默认 3）；字号阈值(%)（num，默认 108）；只识别加粗标题（bool）；标题最大长度（num，默认 80）；只预览不生成文件（bool）
+- **导入书签**：XML 文件路径（text）
+
+</details>
+
+## 安全与合规（8 项）
+
+| # | 能力 | 能力 ID | 说明 |
+|---|---|---|---|
+| 1 | 添加密码 | `security.encrypt` | 用 AES-256 给 PDF 加密，可分别设置打开密码与权限密码。 |
+| 2 | 移除密码 | `security.decrypt` | 输入打开密码，移除 PDF 的加密保护。 |
+| 3 | 净化 PDF | `security.sanitize` | 移除 JavaScript、自动动作、嵌入文件与隐藏信息，阻断 PDF 携带的脚本风险。 |
+| 4 | 证书签名 | `secure.sign` | 给 PDF 加盖数字签名（PKCS#7）。不提供证书时自动生成自签名证书，可导出后重复使用。 |
+| 5 | 验证签名 | `security.verify-signature` | 列出文档里的数字签名并检查其覆盖范围是否完整。注意：本工具只做结构与覆盖检查，不校验证书链与根证书信任，正式场景请用 Adobe 或专业签名验证工具。 |
+| 6 | 移除签名 | `security.remove-signature` | 删除文档中的数字签名字段。移除后签名失效，原有签名外观仍留在页面上。 |
+| 7 | 自动涂黑（敏感信息） | `security.redact-auto` | 按正则识别身份证、手机号、银行卡等敏感文本并整段涂黑。处理过的页会转为图片，原文字不可恢复。 |
+| 8 | 手动涂黑（区域） | `security.redact-area` | 按百分比坐标涂黑指定区域。坐标以左上角为原点，x/y/宽/高均为 0-100 的百分比。 |
+
+<details><summary>参数明细</summary>
+
+- **添加密码**：打开密码（password，默认 打开文件时必须输入，可留空）；权限密码（password，默认 用于修改权限，留空则与打开密码相同）；允许打印（bool）；允许复制内容（bool）
+- **移除密码**：当前密码（password，默认 文件的打开密码）
+- **净化 PDF**：同时清空元数据（bool）
+- **证书签名**：证书文件(.p12/.pfx)（text）；证书密码（password，默认 留空默认 PdfKit123）；证书别名（text）；证书名称（text，默认 PdfKit 自签名）；签名原因（text，默认 文档确认）；签名地点（text，默认 中国）；导出自签名证书（bool）
+- **自动涂黑（敏感信息）**：身份证号（bool）；手机号（bool）；银行卡号（bool）；邮箱（bool）；自定义正则（text）；栅格化清晰度（num，默认 200）
+- **手动涂黑（区域）**：作用页（text，默认 1）；起点 X (%)（num，默认 10）；起点 Y (%)（num，默认 10）；宽度 (%)（num，默认 40）；高度 (%)（num，默认 6）；栅格化清晰度（num，默认 200）
+
+</details>
+
+## 读取与分析（3 项）
+
+| # | 能力 | 能力 ID | 说明 |
+|---|---|---|---|
+| 1 | 文档基础信息 | `analyze.info` | 页数、纸张尺寸、PDF 版本、加密状态、元数据、书签与表单概况。 |
+| 2 | 字体嵌入体检 | `analyze.fonts` | 列出全部字体并标出未嵌入的项——未嵌入字体在别的电脑上会变形或缺字。 |
+| 3 | 文档结构探查 | `analyze.structure` | 检查 PDF 内部对象、流、交叉引用表健康度，定位损坏点。 |
+
+<details><summary>参数明细</summary>
+
+- **字体嵌入体检**：导出 CSV 报告（bool）
+
+</details>
+
+## 优化与修复（3 项）
+
+| # | 能力 | 能力 ID | 说明 |
+|---|---|---|---|
+| 1 | 压缩 PDF | `optimize.compress` | 重采样图片并降低 JPG 质量来减小体积，适合扫描件与图片型 PDF。 |
+| 2 | 画质增强 | `optimize.enhance` | 对模糊/发灰的扫描页做锐化、去噪、对比度提升。逐页重绘，文字仍可提取前提是原页已有文字层。 |
+| 3 | 修复 PDF | `optimize.repair` | 重新解析并重写文档结构，修复交叉引用表损坏、结尾缺失等常见问题。 |
+
+<details><summary>参数明细</summary>
+
+- **压缩 PDF**：压缩强度（choice，默认 标准）；图片最长边(px)（num，默认 0）；清空元数据（bool）
+- **画质增强**：输出分辨率（num，默认 200）；锐化强度(%)（num，默认 60）；对比度(%)（num，默认 110）；去噪强度（num，默认 1）；转灰度（bool）
+
+</details>
 

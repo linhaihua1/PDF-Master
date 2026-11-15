@@ -1,1 +1,0 @@
-LGPL 2.1 fixture license text for Vips Style Image Library.

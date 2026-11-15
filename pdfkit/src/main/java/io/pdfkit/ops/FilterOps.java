@@ -165,6 +165,34 @@ public final class FilterOps {
                 }
             });
 
+    public static final Capability BY_IMAGE = new Capability(
+            "filter.image", "按有无图片筛选", "页面组织",
+            "挑出含图片的页（如插图、扫描页）或只有文字的页，单独导出成一个文件。",
+            List.of(Param.choice("mode", "保留", "含图片的页", "含图片的页", "不含图片的页")),
+            ctx -> {
+                boolean wantImage = !"不含图片的页".equals(ctx.str("mode", "含图片的页"));
+                try (PDDocument doc = PdfUtil.load(ctx.input(), ctx.str("password"))) {
+                    int total = doc.getNumberOfPages();
+                    List<Integer> keep = new ArrayList<>();
+                    for (int i = 1; i <= total; i++) {
+                        ctx.checkCancel();
+                        ctx.report(5 + i * 85 / total, "检查第 " + i + "/" + total + " 页");
+                        if (hasImage(doc.getPage(i - 1)) == wantImage) {
+                            keep.add(i);
+                        }
+                    }
+                    if (keep.isEmpty()) {
+                        throw new Err("ERR_NO_MATCH", "没有符合「" + ctx.str("mode", "含图片的页")
+                                + "」的页面（共 " + total + " 页）");
+                    }
+                    Path out = ctx.outDerived(wantImage ? "_含图页" : "_纯文字页", ".pdf");
+                    OrganizeOps.writeSubset(doc, PdfUtil.toIndices(keep), out);
+                    ctx.addOutput(out);
+                    ctx.setResult("保留 " + keep.size() + " 页：" + keep);
+                    ctx.report(100, "保留 " + keep.size() + " 页");
+                }
+            });
+
     private static boolean near(PDRectangle a, PDRectangle b) {
         return Math.abs(a.getWidth() - b.getWidth()) < 3 && Math.abs(a.getHeight() - b.getHeight()) < 3;
     }

@@ -264,6 +264,98 @@ public final class EditPlusOps {
                 }
             });
 
+    public static final Capability HEADER_FOOTER = new Capability(
+            "edit.header-footer", "页眉页脚", "内容编辑",
+            "在页眉/页脚左中右六个位置写文字，可放公司名、文档标题、页码。占位符 {page} {pages} {title}。",
+            List.of(
+                    Param.text("headerLeft", "页眉左", "", ""),
+                    Param.text("headerCenter", "页眉中", "", ""),
+                    Param.text("headerRight", "页眉右", "", ""),
+                    Param.text("footerLeft", "页脚左", "{title}", "{title}=文件名"),
+                    Param.text("footerCenter", "页脚中", "", ""),
+                    Param.text("footerRight", "页脚右", "{page} / {pages}", ""),
+                    Param.num("size", "字号", "9", "6-24"),
+                    Param.num("margin", "边距(mm)", "12", "0-40"),
+                    Param.bool("skipFirst", "首页不显示", false, "封面页通常不需要"),
+                    Param.bool("rule", "页眉页脚画横线", false, "")
+            ),
+            ctx -> {
+                float size = ctx.intVal("size", 9, 6, 24);
+                float margin = ctx.intVal("margin", 12, 0, 40) * 72f / 25.4f;
+                boolean skipFirst = ctx.bool("skipFirst", false);
+                boolean rule = ctx.bool("rule", false);
+                String title = PdfUtil.baseName(ctx.input());
+                int total = 0;
+                String[][] slots = {
+                        {ctx.str("headerLeft"), ctx.str("headerCenter"), ctx.str("headerRight")},
+                        {ctx.str("footerLeft"), ctx.str("footerCenter"), ctx.str("footerRight")}
+                };
+                if (slots[0][0].isBlank() && slots[0][1].isBlank() && slots[0][2].isBlank()
+                        && slots[1][0].isBlank() && slots[1][1].isBlank() && slots[1][2].isBlank()) {
+                    throw new Err("ERR_BAD_PARAM", "页眉和页脚至少填一个位置");
+                }
+                try (PDDocument doc = PdfUtil.load(ctx.input(), ctx.str("password"))) {
+                    total = doc.getNumberOfPages();
+                    PDFont font = Fonts.chinese(doc);
+                    int i = 0;
+                    for (int p = 1; p <= total; p++) {
+                        if (skipFirst && p == 1) {
+                            continue;
+                        }
+                        ctx.report(5 + i++ * 90 / total, "第 " + p + " 页");
+                        PDPage page = doc.getPage(p - 1);
+                        PDRectangle box = page.getCropBox();
+                        try (PDPageContentStream cs = new PDPageContentStream(doc, page,
+                                PDPageContentStream.AppendMode.APPEND, true, true)) {
+                            for (int row = 0; row < 2; row++) {
+                                boolean header = row == 0;
+                                float y = header
+                                        ? box.getUpperRightY() - margin - size
+                                        : box.getLowerLeftY() + margin;
+                                boolean any = false;
+                                for (int col = 0; col < 3; col++) {
+                                    String raw = slots[row][col];
+                                    if (raw == null || raw.isBlank()) {
+                                        continue;
+                                    }
+                                    String text = raw.replace("{page}", String.valueOf(p))
+                                            .replace("{pages}", String.valueOf(total))
+                                            .replace("{title}", title);
+                                    float tw = font.getStringWidth(text) / 1000f * size;
+                                    float x;
+                                    if (col == 0) {
+                                        x = box.getLowerLeftX() + margin;
+                                    } else if (col == 2) {
+                                        x = box.getUpperRightX() - margin - tw;
+                                    } else {
+                                        x = box.getLowerLeftX() + (box.getWidth() - tw) / 2;
+                                    }
+                                    cs.beginText();
+                                    cs.setFont(font, size);
+                                    cs.setNonStrokingColor(new Color(90, 90, 90));
+                                    cs.newLineAtOffset(x, y);
+                                    cs.showText(text);
+                                    cs.endText();
+                                    any = true;
+                                }
+                                if (rule && any) {
+                                    float ly = header ? box.getUpperRightY() - margin + 4 : box.getLowerLeftY() + margin + size + 4;
+                                    cs.setStrokingColor(new Color(180, 180, 180));
+                                    cs.setLineWidth(0.5f);
+                                    cs.moveTo(box.getLowerLeftX() + margin, ly);
+                                    cs.lineTo(box.getUpperRightX() - margin, ly);
+                                    cs.stroke();
+                                }
+                            }
+                        }
+                    }
+                    Path out = ctx.outDerived("_页眉页脚", ".pdf");
+                    PdfUtil.save(doc, out);
+                    ctx.addOutput(out);
+                    ctx.report(100, "已处理 " + total + " 页");
+                }
+            });
+
     // ---------- 共用 ----------
 
     interface ImageOp {

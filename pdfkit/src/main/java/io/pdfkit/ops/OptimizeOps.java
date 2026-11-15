@@ -160,4 +160,145 @@ public final class OptimizeOps {
                     ctx.report(100, "已重写结构，共 " + doc.getNumberOfPages() + " 页");
                 }
             });
+
+    public static final Capability ENHANCE = new Capability(
+            "optimize.enhance", "画质增强", "优化与修复",
+            "对模糊/发灰的扫描页做锐化、去噪、对比度提升。逐页重绘，文字仍可提取前提是原页已有文字层。",
+            List.of(
+                    Param.num("dpi", "输出分辨率", "200", "96-400"),
+                    Param.num("sharpen", "锐化强度(%)", "60", "0-200"),
+                    Param.num("contrast", "对比度(%)", "110", "50-200"),
+                    Param.num("denoise", "去噪强度", "1", "0-3"),
+                    Param.bool("gray", "转灰度", false, "合同/书籍扫描件推荐")
+            ),
+            ctx -> {
+                int dpi = ctx.intVal("dpi", 200, 96, 400);
+                int sharpen = ctx.intVal("sharpen", 60, 0, 200);
+                int contrast = ctx.intVal("contrast", 110, 50, 200);
+                int denoise = ctx.intVal("denoise", 1, 0, 3);
+                boolean gray = ctx.bool("gray", false);
+                try (PDDocument doc = PdfUtil.load(ctx.input(), ctx.str("password"))) {
+                    List<Integer> pages = PdfUtil.parsePageSpec("", doc.getNumberOfPages());
+                    EditPlusOps.renderTransform(doc, pages, dpi, ctx, img -> {
+                        BufferedImage work = denoise > 0 ? median(img, denoise) : img;
+                        work = sharpen > 0 ? unsharp(work, sharpen / 100f) : work;
+                        work = contrast(work, contrast / 100f);
+                        return gray ? toGray(work) : toRgbSafe(work);
+                    });
+                    java.nio.file.Path out = ctx.outDerived("_增强", ".pdf");
+                    PdfUtil.save(doc, out);
+                    ctx.addOutput(out);
+                    ctx.report(100, "已增强 " + pages.size() + " 页");
+                }
+            });
+
+    // ---------- 图像算法 ----------
+
+    static BufferedImage toRgbSafe(BufferedImage src) {
+        return EditPlusOps.toRgb(src);
+    }
+
+    static BufferedImage toGray(BufferedImage src) {
+        BufferedImage out = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
+        java.awt.Graphics2D g = out.createGraphics();
+        g.drawImage(src, 0, 0, null);
+        g.dispose();
+        BufferedImage rgb = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D g2 = rgb.createGraphics();
+        g2.drawImage(out, 0, 0, null);
+        g2.dispose();
+        return rgb;
+    }
+
+    /** 中值滤波去噪，radius 为半径（1-3），窗口越大越平滑也越慢。 */
+    static BufferedImage median(BufferedImage src, int radius) {
+        int w = src.getWidth();
+        int h = src.getHeight();
+        BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        int[] r = new int[9];
+        int[] g = new int[9];
+        int[] b = new int[9];
+        int side = radius * 2 + 1;
+        int[] cr = new int[side * side];
+        int[] cg = new int[side * side];
+        int[] cb = new int[side * side];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int n = 0;
+                for (int dy = -radius; dy <= radius; dy++) {
+                    int yy = Math.min(h - 1, Math.max(0, y + dy));
+                    for (int dx = -radius; dx <= radius; dx++) {
+                        int xx = Math.min(w - 1, Math.max(0, x + dx));
+                        int rgb = src.getRGB(xx, yy);
+                        cr[n] = (rgb >> 16) & 0xFF;
+                        cg[n] = (rgb >> 8) & 0xFF;
+                        cb[n] = rgb & 0xFF;
+                        n++;
+                    }
+                }
+                java.util.Arrays.sort(cr, 0, n);
+                java.util.Arrays.sort(cg, 0, n);
+                java.util.Arrays.sort(cb, 0, n);
+                int m = n / 2;
+                out.setRGB(x, y, (cr[m] << 16) | (cg[m] << 8) | cb[m]);
+            }
+        }
+        return out;
+    }
+
+    /** 反锐化掩模：原图 + amount × (原图 - 模糊图)。 */
+    static BufferedImage unsharp(BufferedImage src, float amount) {
+        int w = src.getWidth();
+        int h = src.getHeight();
+        BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        int[] kernel = {1, 2, 1, 2, 4, 2, 1, 2, 1};
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int rr = 0;
+                int gg = 0;
+                int bb = 0;
+                int k = 0;
+                for (int dy = -1; dy <= 1; dy++) {
+                    int yy = Math.min(h - 1, Math.max(0, y + dy));
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int xx = Math.min(w - 1, Math.max(0, x + dx));
+                        int rgb = src.getRGB(xx, yy);
+                        int wgt = kernel[k++];
+                        rr += ((rgb >> 16) & 0xFF) * wgt;
+                        gg += ((rgb >> 8) & 0xFF) * wgt;
+                        bb += (rgb & 0xFF) * wgt;
+                    }
+                }
+                float br = rr / 16f;
+                float bg = gg / 16f;
+                float bbl = bb / 16f;
+                int rgb = src.getRGB(x, y);
+                int cr = clamp(Math.round(((rgb >> 16) & 0xFF) + amount * (((rgb >> 16) & 0xFF) - br)));
+                int cg = clamp(Math.round(((rgb >> 8) & 0xFF) + amount * (((rgb >> 8) & 0xFF) - bg)));
+                int cb = clamp(Math.round((rgb & 0xFF) + amount * ((rgb & 0xFF) - bbl)));
+                out.setRGB(x, y, (cr << 16) | (cg << 8) | cb);
+            }
+        }
+        return out;
+    }
+
+    static BufferedImage contrast(BufferedImage src, float factor) {
+        int w = src.getWidth();
+        int h = src.getHeight();
+        BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int rgb = src.getRGB(x, y);
+                int cr = clamp(Math.round((((rgb >> 16) & 0xFF) - 128) * factor + 128));
+                int cg = clamp(Math.round((((rgb >> 8) & 0xFF) - 128) * factor + 128));
+                int cb = clamp(Math.round(((rgb & 0xFF) - 128) * factor + 128));
+                out.setRGB(x, y, (cr << 16) | (cg << 8) | cb);
+            }
+        }
+        return out;
+    }
+
+    static int clamp(int v) {
+        return Math.max(0, Math.min(255, v));
+    }
 }

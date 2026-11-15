@@ -1,1 +1,0 @@
-This file is not a license notice, just malformed content for parser tests.

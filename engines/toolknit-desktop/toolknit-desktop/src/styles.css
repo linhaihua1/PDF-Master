@@ -1,3 +1,0 @@
-/* Compatibility entry point. New code should import ./styles/index.css. */
-@import url('./styles/index.css');
-/* .audio-clip-success-overlay remains available through the legacy compatibility layer. */

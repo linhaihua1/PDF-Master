@@ -1,105 +1,152 @@
-# 整合架构
+# 架构设计
 
-## 为什么不是「合并代码库」
+## 1. 设计目标与约束
 
-三个项目的技术栈互不兼容，直接合并会得到一个既编不过也跑不起来的东西：
+| 目标 | 约束来源 | 落地方式 |
+|---|---|---|
+| 目标机零环境依赖 | 用户硬要求「组件全部内置」 | 精简 JRE 随包分发；UI 用 JDK 自带的 Swing；字体内置；不调 COM、不调外部进程 |
+| 离线可用 | 需求 NFR-05 | 全程无网络调用，连 LLM 类能力也不做 |
+| 双击即用 | 交付形态要求 exe | `jpackage --type exe` 生成安装包 |
+| 体积可控 | 需求 NFR-04 | 放弃内嵌 Stirling（320 MB）与 LibreOffice（+350 MB），最终 73 MB |
+| 启动 ≤5 s | 需求 NFR-01 | 无 Spring、无 WebView、无本地服务端口，实测 1.1 s |
 
-| 项目 | 语言/运行时 | 形态 | 独有资源 |
-|---|---|---|---|
-| Stirling-PDF | Java 25 / Spring Boot | 服务端 + React 前端 | LibreOffice、Tesseract、PDFBox、管线引擎 |
-| PDFPatcher | C# / .NET 4.0 | WinForms 桌面程序 | MuPDF 封装、iText 中文书签逻辑 |
-| ToolKnit | JS + Rust (Tauri) | 桌面应用 | pdf-lib 前端处理链、插件式工具框架 |
-
-可行的整合点是**能力**而不是代码：把三者的功能抽成统一编号的能力清单，再由一层薄网关按能力路由到对应引擎。
-
-```
-┌─────────────────────────────────────────────┐
-│  PDF 工作台（integration/desktop/pdf-hub）   │  统一界面：搜索 / 分类 / 执行 / 下载
-└───────────────────┬─────────────────────────┘
-                    │ HTTP (127.0.0.1:8931)
-┌───────────────────▼─────────────────────────┐
-│  能力网关（integration/gateway）             │
-│  · capabilities.json → 124 项能力            │
-│  · 作业队列（并发 2）· 产物隔离目录           │
-│  · 引擎探测与降级判定                         │
-└───┬───────────────┬───────────────┬─────────┘
-    │ multipart     │ spawn         │ 直接打开
-┌───▼──────┐  ┌─────▼──────┐  ┌────▼───────┐
-│ Stirling │  │ PDFPatcher │  │ ToolKnit   │
-│ :8080    │  │ CLI.exe    │  │ 前端工具页  │
-└──────────┘  └────────────┘  └────────────┘
-```
-
-## 三个关键设计
-
-### 1. 能力清单是唯一事实来源
-
-`integration/registry/capabilities.json` 由四份输入合成：
+## 2. 分层
 
 ```
-stirling-capabilities.json   自动生成（源码注解 + zh-CN 语言包）
-patcher-capabilities.json    手工维护（8 项独有能力）
-native-capabilities.json     手工维护（17 项前端内置）
-overrides.json               手工覆盖（多文件字段名、输出类型）
-        ↓  node integration/registry/build.mjs
-capabilities.json            124 项，前端与网关都只读这一份
+┌───────────────────────────────────────────────┐
+│ ui/          Swing + FlatLaf                  │
+│   MainFrame  能力列表 / 表单 / 任务列表 / 日志  │
+│   FormPanel  由 Param 列表自动生成控件         │
+└───────────────────┬───────────────────────────┘
+                    │ 只依赖 Capability 抽象，不认识任何具体能力
+┌───────────────────▼───────────────────────────┐
+│ core/        能力内核（不依赖 Swing）          │
+│   Capability  能力声明（id/title/category/参数/执行体）│
+│   Registry    60 项能力的唯一注册点            │
+│   Ctx         单次执行的上下文（输入/参数/进度/取消）│
+│   JobQueue    固定线程池（并发 2）+ 任务状态机  │
+│   Err         错误码 + 人话消息                │
+└───────────────────┬───────────────────────────┘
+                    │ 只用 PDFBox / BouncyCastle，不用任何框架
+┌───────────────────▼───────────────────────────┐
+│ ops/         15 个能力类，60 项能力            │
+│   OrganizeOps  LayoutOps  LayoutPlusOps        │
+│   FilterOps    EditOps    EditPlusOps          │
+│   ConvertOps   ConvertPlusOps                  │
+│   SecureOps    RedactOps  FormOps              │
+│   BookmarkOps  AttachOps  AnnotOps  AnalyzeOps │
+└───────────────────┬───────────────────────────┘
+                    │
+┌───────────────────▼───────────────────────────┐
+│ util/        PdfUtil（加载/原子保存/页范围解析）│
+│              Fonts（内置字体）Log（滚动日志）   │
+└───────────────────────────────────────────────┘
 ```
 
-Stirling 的能力不是手抄的：`scripts/gen-registry.py` 扫描 `@AutoJobPostMapping` / `@PostMapping`，
-再用 `@MiscApi` 这类组合注解还原 `/api/v1/<group>` 前缀，最后从 `frontend/public/locales/zh-CN/translation.toml`
-取中文标题与描述。上游升级后重跑一次即可，不用担心清单漂移。
+依赖方向严格单向：`ui → core → ops → util`。`ops` 不 import 任何 `ui` 包，因此 60 项能力全部可以不启界面直接跑 —— 35 个端到端测试就是这样验证的。
 
-代价与取舍：只能拿到「端点级」信息，参数定义仍需 `overrides.json` 手工补。当前 99 项里
-只有 20 项声明了 options，其余走 Stirling 的默认值——够用，但不等于完整 API 文档。
+## 3. 能力注册表：为什么 UI 里没有「一个功能一个面板」
 
-### 2. 网关只做路由，不做业务
+传统写法是「每个功能画一个面板」，60 项能力就是 60 个界面文件，改一个参数要动界面代码。
 
-`integration/gateway` 零依赖（`package.json` 里 `dependencies` 是空的），职责只有四件：
-校验入参、排队、调适配器、收产物。
+本项目把参数也变成数据：
 
-- 输入统一为**本机路径**（`POST /api/run`）或 **multipart 上传**（`POST /api/upload`）
-- 每个作业独占 `.work/jobs/<uuid>/`，下载接口只能读取该目录，杜绝任意路径访问
-- 并发默认 2：Stirling 的重任务（OCR、转换）吃内存，放开会互相拖死
-- CORS 只放行 `file://`、`localhost`、`127.0.0.1`，其他来源 403——否则任意网页都能指挥本机处理文件
-
-### 3. 不可用要说清原因，不能假装成功
-
-每个能力返回 `available` 与 `reason`：
-
-```json
-{ "id": "stirling.convert.pdf-word", "available": false,
-  "reason": "Stirling-PDF 未就绪（fetch failed）",
-  "hint": "运行 npm run start:all 或 node scripts/dev.mjs all 启动本地服务" }
+```java
+public record Param(String key, String label, Type type, String def,
+                    List<String> choices, String help) {
+    public enum Type { TEXT, NUMBER, CHOICE, BOOL, PASSWORD }
+}
 ```
 
-PDFPatcher 通道未构建时，8 项能力全部标记不可用并给出 `fallback`（对应的 Stirling 端点），
-不会出现「点了没反应」或「返回空文件」。
+一个能力的完整声明如下（以「旋转页面」为例）：
 
-## 数据流：一次合并任务的完整路径
-
-```
-前端选 2 个 PDF
-  → POST /api/upload        multipart 落盘到 .work/uploads/<uuid>/
-  → POST /api/run           {capabilityId:"stirling.merge.merge-pdfs", files:[路径]}
-      · 查 capabilities.json，确认引擎、字段名（fileInput，multiple）
-      · probeEngines() 确认 Stirling UP
-      · 入队，返回 202 {jobId}
-  → 网关后台执行
-      · 读文件 → FormData（Blob，按扩展名定 MIME）
-      · POST http://127.0.0.1:8080/api/v1/general/merge-pdfs
-      · 解析 Content-Disposition 取文件名（含 RFC 5987 UTF-8 处理）
-      · 写入 .work/jobs/<jobId>/
-  → GET /api/jobs/<id>      轮询到 status=done，返回 outputs[].url
-  → GET /api/jobs/<id>/files/<name>   下载
+```java
+public static final Capability ROTATE = new Capability(
+        "organize.rotate", "旋转页面", "页面组织",
+        "顺时针旋转全部或指定页面的显示方向。",
+        List.of(
+                Param.choice("angle", "旋转角度", "90", "90", "180", "270"),
+                Param.text("pages", "作用页", "", "留空=全部页，或 1-3,5")
+        ),
+        ctx -> {
+            int angle = ctx.intVal("angle", 90);
+            /* ... 实际处理，约 20 行 ... */
+        });
 ```
 
-## 已知边界
+`FormPanel` 拿到 `params` 后按 `Type` 生成下拉框 / 数字框 / 勾选框 / 密码框，`help` 变成输入框下方的灰色提示。**新增一项能力 = 写一个常量 + 在 Registry 加一行**，界面零改动。
+
+`Ctx` 统一做参数解析与校验，越界的数字在这里就抛 `ERR_PARAM_RANGE`，不会走到业务代码里产生半个损坏文件：
+
+```java
+int dpi = ctx.intVal("dpi", 200, 96, 600);  // 不在 96–600 直接报错并说明当前值
+```
+
+## 4. 任务执行
+
+```
+用户点「执行」
+   │
+   ├─ JobQueue.submit() 建 Job，状态 PENDING，立刻返回
+   │
+   └─ 固定线程池（并发 2）
+        ├─ 建独立工作目录 work/<jobId>/
+        ├─ 建 Ctx（输入快照、参数快照、进度回调、取消令牌）
+        ├─ cap.op().run(ctx)
+        │    ├─ ctx.report(pct, msg)   → UI 进度条 + 状态文字
+        │    └─ ctx.checkCancel()      → 每页/每文件检查一次
+        └─ 结束
+             ├─ 成功：产物列表写回 Job，工作目录删除
+             ├─ 失败：保留错误码 + 消息 + 堆栈到日志，工作目录删除
+             └─ 取消：清理已生成的半成品
+```
+
+三个刻意的设计：
+
+**产物原子化**。`PdfUtil.save()` 先写 `<name>.pdf.part` 再 `move` 覆盖。断电或崩溃时磁盘上要么是旧文件，要么是新文件，不会出现 0 字节的 PDF。
+
+**输出名自动避让**。`ctx.outDerived("_合并", ".pdf")` 会在 `a.pdf` 存在时自动变成 `a_合并.pdf`，再冲突变 `a_合并_1.pdf`。同时会主动避开输入文件 —— 避免「输出覆盖源文件」这类不可逆事故。
+
+**取消是协作式的**。`ctx.checkCancel()` 在每页循环里抛 `ERR_CANCELED`，队列捕获后清理工作目录。不用 `Thread.stop()`，因为它会把文件句柄留在半开状态。
+
+## 5. 错误模型
+
+错误不是异常堆栈，是给人看的一句话 + 一个可检索的码。
+
+```java
+public final class Err extends RuntimeException {
+    private final String code;      // ERR_ENCRYPTED / ERR_NO_FORM / ERR_PAGE_RANGE ...
+}
+```
+
+| 码 | 触发场景 | 用户看到的话 |
+|---|---|---|
+| `ERR_ENCRYPTED` | 打开加密 PDF 未给密码 | PDF 已加密，请提供打开密码：x.pdf |
+| `ERR_BAD_PDF` | 文件损坏或不是 PDF | 无法解析 PDF（文件损坏或不是 PDF）：x.pdf |
+| `ERR_PAGE_RANGE` | 页码范围越界 | 页码范围 99 超出总页数 3 |
+| `ERR_NO_FORM` | 对无表单文件做表单操作 | 这个 PDF 没有表单字段 |
+| `ERR_NO_TEXT` | 对扫描件做文本提取 | 这个 PDF 没有可提取的文字（可能是扫描件） |
+
+原则：**能说清「为什么」和「怎么办」的才叫错误消息**，`NullPointerException` 直接给用户看是不合格的。
+
+## 6. 为什么是这些技术选型
+
+| 选择 | 备选 | 否决理由 |
+|---|---|---|
+| PDFBox 3.0.5 | iText 7 / Aspose | iText 是 AGPL；Aspose 是商业授权。PDFBox 是 Apache 2.0，功能覆盖本项目 60 项中的 58 项 |
+| Swing + FlatLaf | JavaFX / WebView2 / 内嵌 Spring | JavaFX 需额外 60 MB 运行时；WebView2 在部分 Win10 需单独装运行时；Spring 让冷启动变成 8–15 s |
+| 内置思源黑体 | 用系统字体 / 用 Standard14 | 系统字体在精简版 Windows 上可能缺失，出方框；Standard14 没有中文 |
+| BouncyCastle | 系统 KeyStore 默认算法 | 签名需要完整 CMS 支持，JDK 自带的不够 |
+| `jpackage` | InstallShield / NSIS | jpackage 是 JDK 自带，能一并打包 JRE，输出标准 MSI/EXE |
+
+## 7. 已知限制
 
 | 限制 | 原因 | 影响 |
 |---|---|---|
-| Stirling 需 JDK 25 | 上游 `modernJavaVersion = 25` | 本机 JDK 17，需另装；未装时 99 项不可用 |
-| PDFPatcher 无 CLI | 上游只有 WinForms 入口 | 8 项独有能力待接线，见 `integration/patcher-cli/README.md` |
-| 无 Tauri 二进制打包 | 本机无 Rust 工具链 | 工作台以静态页运行，桌面打包需另配 |
-| 参数定义不全 | 端点信息可自动提取，参数不可 | 20/99 项有显式 options，其余用默认 |
-
-这些都写在 `node scripts/dev.mjs --check` 的输出里，不藏在代码里。
+| 涂黑/反色/扫描件效果后该页不可搜索 | 为实现「真删除底层文字」，把整页栅格化替换内容流 | 这是安全红线的必要代价，已在界面提示 |
+| PDF → Word 不做像素级还原 | 保版式是商业库（Aspose/iText）的强项，开源方案还原度差 | 只保证文字流、标题层级、段落可编辑 |
+| 表格转 Markdown 只做纯文本 | 无表格结构识别引擎 | 复杂表格会丢列关系 |
+| 自签名证书 Adobe 提示「身份未知」 | 自签名不在任何 CA 信任链里 | 签名本身有效，商业场景请用 CA 证书 |
+| 无 OCR | tess4j + 中文语言包 +50 MB，与体积目标冲突 | 扫描件只能做图像处理，不能提取文字 |
+| 无 Office → PDF | 依赖系统 Office（违背零依赖）或 LibreOffice（+350 MB） | 该能力置于范围外 |
+| 无可视化编辑器与流水线 | 各约 10 人日，排后续版本 | 当前只能单步操作 |

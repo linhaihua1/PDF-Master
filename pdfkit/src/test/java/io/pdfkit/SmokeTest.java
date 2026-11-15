@@ -4,12 +4,16 @@ import io.pdfkit.core.Capability;
 import io.pdfkit.core.Ctx;
 import io.pdfkit.core.Err;
 import io.pdfkit.ops.AnalyzeOps;
+import io.pdfkit.ops.AnnotOps;
 import io.pdfkit.ops.BookmarkOps;
 import io.pdfkit.ops.ConvertOps;
+import io.pdfkit.ops.ConvertPlusOps;
 import io.pdfkit.ops.EditOps;
 import io.pdfkit.ops.EditPlusOps;
 import io.pdfkit.ops.FilterOps;
+import io.pdfkit.ops.FormOps;
 import io.pdfkit.ops.LayoutOps;
+import io.pdfkit.ops.LayoutPlusOps;
 import io.pdfkit.ops.OptimizeOps;
 import io.pdfkit.ops.OrganizeOps;
 import io.pdfkit.ops.SecureOps;
@@ -361,5 +365,122 @@ class SmokeTest {
             assertEquals(10, doc.getNumberOfPages());
             assertEquals(null, doc.getDocumentInformation().getAuthor());
         }
+    }
+
+    // ================= v1.1 新增能力 =================
+
+    @Test
+    void annotationAddedExportedThenStripped() throws Exception {
+        Path withNote = run(AnnotOps.ADD, List.of(c), p("pages", "1-2", "text", "复核此处", "author", "测试"));
+        try (PDDocument doc = Loader.loadPDF(withNote.toFile())) {
+            assertTrue(doc.getPage(0).getAnnotations().size() > 0, "第 1 页应有便签");
+            assertTrue(doc.getPage(1).getAnnotations().size() > 0, "第 2 页应有便签");
+            assertEquals(0, doc.getPage(2).getAnnotations().size(), "第 3 页不应有便签");
+        }
+        Path csv = run(AnnotOps.EXPORT, List.of(withNote), p("exportCsv", "true"));
+        String text = Files.readString(csv, java.nio.charset.StandardCharsets.UTF_8);
+        assertTrue(text.contains("复核此处"), "导出的 CSV 应含注释内容");
+
+        Path stripped = run(AnnotOps.STRIP, List.of(withNote), p("kind", "全部注释"));
+        try (PDDocument doc = Loader.loadPDF(stripped.toFile())) {
+            assertEquals(0, doc.getPage(0).getAnnotations().size(), "清除后不应有注释");
+        }
+    }
+
+    @Test
+    void markdownHasHeadingAndBody() throws Exception {
+        Path md = run(ConvertPlusOps.TO_MARKDOWN, List.of(a), p("maxLevel", "3"));
+        String text = Files.readString(md, java.nio.charset.StandardCharsets.UTF_8);
+        assertTrue(text.contains("Chapter One"), "应保留标题文字");
+        assertTrue(text.contains("# "), "应生成 Markdown 标题");
+        assertTrue(text.contains("Body text line"), "应保留正文");
+    }
+
+    @Test
+    void docxIsReadableZip() throws Exception {
+        Path docx = run(ConvertPlusOps.TO_WORD, List.of(a), p("maxLevel", "3", "fontSize", "10"));
+        try (java.util.zip.ZipFile zf = new java.util.zip.ZipFile(docx.toFile())) {
+            assertNotNull(zf.getEntry("word/document.xml"), "docx 必须含 document.xml");
+            assertNotNull(zf.getEntry("[Content_Types].xml"), "docx 必须含 [Content_Types].xml");
+            String xml = new String(zf.getInputStream(zf.getEntry("word/document.xml")).readAllBytes(),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            assertTrue(xml.contains("Chapter One"), "文档正文应含标题文字");
+        }
+    }
+
+    @Test
+    void multiPageTiffWritten() throws Exception {
+        Path tif = run(ConvertPlusOps.TO_TIFF, List.of(c), p("dpi", "96", "compress", "LZW"));
+        assertTrue(Files.size(tif) > 1000, "TIFF 应该有内容");
+        try (var in = javax.imageio.ImageIO.createImageInputStream(tif.toFile())) {
+            var readers = javax.imageio.ImageIO.getImageReaders(in);
+            assertTrue(readers.hasNext(), "应能被 TIFF 解码器识别");
+            var reader = readers.next();
+            reader.setInput(in);
+            assertEquals(3, reader.getNumImages(true), "3 页应写成 3 帧");
+            reader.dispose();
+        }
+    }
+
+    @Test
+    void posterSplitsIntoBlocks() throws Exception {
+        Path out = run(LayoutPlusOps.POSTER, List.of(c), p("cols", "2", "rows", "2",
+                "overlap", "0", "pages", "1"));
+        try (PDDocument doc = Loader.loadPDF(out.toFile())) {
+            assertEquals(4, doc.getNumberOfPages(), "1 页切 2×2 应得 4 块");
+            PDPage first = doc.getPage(0);
+            assertTrue(first.getCropBox().getWidth() > 0 && first.getCropBox().getHeight() > 0);
+        }
+    }
+
+    @Test
+    void bookletPadsToMultipleOfFour() throws Exception {
+        Path out = run(LayoutPlusOps.BOOKLET, List.of(c), p("gap", "5", "border", "true"));
+        try (PDDocument doc = Loader.loadPDF(out.toFile())) {
+            assertEquals(2, doc.getNumberOfPages(), "3 页补到 4 页后应排成 2 张纸");
+        }
+    }
+
+    @Test
+    void headerFooterKeepsPageCount() throws Exception {
+        Path out = run(EditPlusOps.HEADER_FOOTER, List.of(c),
+                p("footerRight", "{page}/{pages}", "headerCenter", "{title}", "size", "8"));
+        try (PDDocument doc = Loader.loadPDF(out.toFile())) {
+            assertEquals(3, doc.getNumberOfPages());
+            String text = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
+            assertTrue(text.contains("1/3"), "页脚应渲染页码，实际：" + text.replace("\n", " | "));
+        }
+    }
+
+    @Test
+    void enhanceRunsAndKeepsPages() throws Exception {
+        Path out = run(OptimizeOps.ENHANCE, List.of(c),
+                p("dpi", "96", "sharpen", "50", "contrast", "110", "denoise", "1"));
+        try (PDDocument doc = Loader.loadPDF(out.toFile())) {
+            assertEquals(3, doc.getNumberOfPages());
+        }
+    }
+
+    @Test
+    void filterByImageSelectsTextOnlyPages() throws Exception {
+        // 样本无图，选「不含图片的页」应保留全部
+        Path out = run(FilterOps.BY_IMAGE, List.of(c), p("mode", "不含图片的页"));
+        try (PDDocument doc = Loader.loadPDF(out.toFile())) {
+            assertEquals(3, doc.getNumberOfPages());
+        }
+    }
+
+    @Test
+    void signAddsSignatureDictionary() throws Exception {
+        Ctx c1 = ctx(SecureOps.SIGN, List.of(c),
+                p("cn", "单元测试证书", "reason", "测试", "location", "中国", "saveCert", "true"));
+        SecureOps.SIGN.op().run(c1);
+        assertEquals(2, c1.outputs().size(), "应产出已签名 PDF 与证书文件");
+        Path signed = c1.outputs().get(0);
+        try (PDDocument doc = Loader.loadPDF(signed.toFile())) {
+            assertEquals(1, doc.getSignatureDictionaries().size(), "应写入 1 个签名");
+        }
+        Path p12 = c1.outputs().get(1);
+        assertTrue(p12.getFileName().toString().endsWith(".p12"), "应导出 p12 证书");
     }
 }

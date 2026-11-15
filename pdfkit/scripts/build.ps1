@@ -30,11 +30,11 @@ if (-not (Test-Path $lib)) { throw "找不到 $lib，请先执行 installDist" }
 
 $common = @(
     '--name', 'PdfKit',
-    '--app-version', '1.0.0',
+    '--app-version', '1.1.0',
     '--vendor', 'PdfKit',
     '--description', 'PDF 工具箱 · 离线版',
     '--input', $lib,
-    '--main-jar', 'pdfkit-1.0.0.jar',
+    '--main-jar', 'pdfkit-1.1.0.jar',
     '--main-class', 'io.pdfkit.App',
     '--java-options', '-Dfile.encoding=UTF-8',
     '--java-options', '-Xmx1024m'

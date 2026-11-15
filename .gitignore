@@ -2,29 +2,9 @@
 .work/
 *.log
 
-# Node
-node_modules/
-engines/*/node_modules/
-engines/*/*/node_modules/
-
 # Python
 __pycache__/
 *.pyc
-
-# Gradle / Java（Stirling-PDF）
-engines/stirling-pdf/.gradle/
-engines/stirling-pdf/build/
-engines/stirling-pdf/**/build/
-!engines/stirling-pdf/buildSrc/
-engines/stirling-pdf/**/*.jar
-!engines/stirling-pdf/gradle/wrapper/gradle-wrapper.jar
-
-# .NET（PDFPatcher / patcher-cli）
-engines/pdfpatcher/**/bin/
-engines/pdfpatcher/**/obj/
-engines/pdfpatcher/**/.vs/
-integration/patcher-cli/bin/
-integration/patcher-cli/obj/
 
 # 编辑器
 .vscode/
@@ -33,7 +13,7 @@ integration/patcher-cli/obj/
 .DS_Store
 Thumbs.db
 
-# PdfKit（Java 桌面端）构建产物
+# PdfKit 构建产物
 pdfkit/.gradle/
 pdfkit/build/
 pdfkit/dist/
