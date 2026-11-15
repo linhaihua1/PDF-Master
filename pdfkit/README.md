@@ -73,7 +73,7 @@ PDF 转图片（PNG/JPG，DPI 可调）、图片转 PDF（多图排序/纸张适
 ### 命令
 
 ```bash
-# 编译 + 测试（35 个用例）
+# 编译 + 测试（76 个用例，含 S1–S5 五阶段）
 export JAVA_HOME="C:/dev/jdk-17.0.13"
 /c/dev/gradle-8.14/bin/gradle test
 
@@ -81,21 +81,53 @@ export JAVA_HOME="C:/dev/jdk-17.0.13"
 /c/dev/gradle-8.14/bin/gradle installDist
 
 # 出绿色版
-"$JAVA_HOME/bin/jpackage" --type app-image --name PdfKit --app-version 1.1.0 \
-  --input build/install/pdfkit/lib --main-jar pdfkit-1.1.0.jar \
+"$JAVA_HOME/bin/jpackage" --type app-image --name PdfKit --app-version 1.2.0 \
+  --input build/install/pdfkit/lib --main-jar pdfkit-1.2.0.jar \
   --main-class io.pdfkit.App --dest dist \
   --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m"
 
 # 出安装包（需 WiX 在 PATH）
 export PATH="/c/dev/wix314:$PATH"
-"$JAVA_HOME/bin/jpackage" --type exe --name PdfKit --app-version 1.1.0 \
-  --input build/install/pdfkit/lib --main-jar pdfkit-1.1.0.jar \
+"$JAVA_HOME/bin/jpackage" --type exe --name PdfKit --app-version 1.2.0 \
+  --input build/install/pdfkit/lib --main-jar pdfkit-1.2.0.jar \
   --main-class io.pdfkit.App --dest dist-installer \
   --win-menu --win-shortcut --win-dir-chooser \
   --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m"
 ```
 
 或直接跑 `scripts\build.ps1`。
+
+### 更换内置字体（非日常构建步骤）
+
+内置字体 `src/main/resources/fonts/NotoSansSC-Regular.ttf`（约 9.7 MB）随安装包分发，
+目标机不需要装任何中文字体。**换字体前必须读完这三条，否则会静默出错而不是报错：**
+
+| 要求 | 违反后果 |
+|---|---|
+| 必须是 **glyf 轮廓**的 TrueType，不能是 CFF 轮廓的 OTF | PDFBox 的 `PDType0Font` 直接拒绝加载，代码静默回退系统字体 —— 目标机没装中文字体时全是方框 |
+| cmap **不能有一对多**（多个码位映射到同一字形） | PDFBox 生成 ToUnicode 时按 GID 反查且只取最小码位：写「页」提取出「⻚」、写「胶」提取出「㬵」、写「•」提取出「·」，字形对但复制/搜索/转 Word 全错 |
+| 必须覆盖 GB2312 全部 7445 个码位 | 带圈序号 ⒈、片假名中点 ・、声调符号 ˉˇ、制表符等直接缺字抛异常 |
+
+用 `scripts/build-font.py` 生成，它把上面三条都固化进去了（子集白名单含 GB2312 全码表、
+逐字形拆分同形字、产出前断言 cmap 严格一对一）：
+
+```bash
+pip install fonttools
+# 源字体：Google Fonts 的 NotoSansSC[wght].ttf（约 17 MB），放在 scripts/ 下
+python scripts/build-font.py scripts/NotoSansSC-VF.ttf \
+    src/main/resources/fonts/NotoSansSC-Regular.ttf
+```
+
+替换后一定要跑字体验证用例，它用 GB2312 全量 + 产品文案 + 20 组同形字对做
+「写入 → 提取 → 逐字比对」，不一致就失败：
+
+```bash
+/c/dev/gradle-8.14/bin/gradle test --tests "io.pdfkit.FunctionalTest.bundledChineseFontIsUsable"
+```
+
+⚠️ 不要用 `PDType0Font.hasGlyph()` 判断这个字体缺不缺字。PDFBox 对 `embedSubset=true`
+加载的字体把入参当 CID/GID 而非 Unicode 码位，只有码位数值小于字形总数时才返回 true，
+结论完全随机。
 
 ---
 
