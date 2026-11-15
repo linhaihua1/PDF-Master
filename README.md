@@ -50,11 +50,11 @@ PDF-Master/
 │   ├── src/main/java/io/pdfkit/
 │   │   ├── App.java            # 入口
 │   │   ├── core/               # 能力注册表、任务队列、上下文、错误模型
-│   │   ├── ops/                # 15 个能力类，60 项能力
+│   │   ├── ops/                # 16 个能力类，60 项能力
 │   │   ├── ui/                 # Swing + FlatLaf 界面（表单由参数定义自动生成）
 │   │   └── util/               # PDF 加载/原子保存、字体、日志、系统探测
 │   ├── src/main/resources/fonts/  # 内置思源黑体 TTF（OFL 许可，子集嵌入）
-│   ├── src/test/java/io/pdfkit/   # 76 个用例，5 个测试类 + 1 个启动夹具
+│   ├── src/test/java/io/pdfkit/   # 76 个用例，6 个测试类 + 1 个启动夹具
 │   ├── scripts/
 │   │   ├── build.ps1           # 一键构建 + 打包
 │   │   └── build-font.py       # 重建内置字体（仅换字体时需要）
@@ -62,9 +62,10 @@ PDF-Master/
 │   ├── dist/                   # 绿色版产物（已 gitignore）
 │   └── dist-installer/         # 安装包产物（已 gitignore）
 ├── docs/
+│   ├── user-guide.md           # 用户操作手册（60 项功能逐项说明 + 按需求索引）
 │   ├── requirements/           # 需求分析 + 验收 Checklist
-│   ├── architecture.md         # 架构设计
-│   ├── build.md                # 构建与打包
+│   ├── architecture.md         # 架构设计 + 新增能力步骤 + 维护约定
+│   ├── build.md                # 构建、打包、重建字体
 │   └── capability-matrix.md    # 60 项能力矩阵
 └── .gitignore
 ```
@@ -80,6 +81,16 @@ powershell -File scripts/build.ps1
 cd pdfkit
 gradle test
 ```
+
+## 文档导航
+
+| 文档 | 给谁看 | 内容 |
+|---|---|---|
+| [docs/user-guide.md](docs/user-guide.md) | **最终用户** | 安装卸载、界面导览、按需求找功能、60 项功能逐项说明、常见问题、故障排查 |
+| [docs/architecture.md](docs/architecture.md) | 开发者 | 分层设计、能力注册表原理、任务执行流程、错误模型、技术选型理由、**新增一项能力的完整步骤**、代码维护约定 |
+| [docs/build.md](docs/build.md) | 开发者 | 环境要求、构建与打包命令、依赖清单、测试组织、**重建内置字体** |
+| [docs/capability-matrix.md](docs/capability-matrix.md) | 验收 | 60 项能力的参数与验收依据 |
+| [pdfkit/TEST-REPORT.md](pdfkit/TEST-REPORT.md) | 质量 | 五阶段测试结果、10 个缺陷明细、性能实测数据 |
 
 ## 设计要点
 

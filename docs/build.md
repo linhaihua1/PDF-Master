@@ -123,3 +123,87 @@ python pdfkit/scripts/gen-matrix.py
 | 运行 exe 闪退 | 看日志 | `%LOCALAPPDATA%\PdfKit\logs\` 下按天滚动 |
 | 中文变方框 | 字体资源未打进 jar | 检查 `src/main/resources/fonts/NotoSansSC-Regular.ttf` 存在且被 `processResources` 收进产物 |
 | 安装包体积暴涨 | 误把 `dist/` 打进安装包 | `jpackage --input` 只指向 `build/install/pdfkit/lib` |
+
+## 9. 重建内置字体
+
+> 只有**更换字体**时才需要做这一步。字体文件已在仓库里（9.75 MB），日常构建不涉及。
+
+### 为什么不能直接扔一个 ttf 进 `fonts/`
+
+PDFBox 有两个隐性要求，不满足时不报错，只是效果不对：
+
+**约束一：必须是 glyf 轮廓的 TrueType。**
+CFF 轮廓的 OTF（多数 `.otf` 都是）会让 `PDType0Font.load` 抛
+`True Type fonts using CFF outlines are not supported`。`Fonts.chinese()` 捕获异常后
+回退系统字体——测试全绿，但在没装中文字体的机器上全是方框。
+
+**约束二：cmap 不能多对一。**
+PDFBox 生成 ToUnicode 时按 GID 反查字形，同一字形有多个码位映射时**只取最小的那个**。
+Noto 原始字体把「页」的部首形（U+2EDA）和「页」（U+9875）映射到同一字形，
+于是写「页」提取出来是「⻚」。字形看着对，但复制、搜索、文本提取、转 Word 全错。
+
+**第三条注意事项：`hasGlyph()` 不能用来验缺字。**
+对 `embedSubset=true` 加载的字体，它把入参当 CID/GID 而非 Unicode 码位，
+只有码位数值小于字形总数才返回 true，结论等于随机。唯一可信的验法是
+写入后用 `PDFTextStripper` 提取比对。
+
+### 操作步骤
+
+**① 准备源字体**
+
+下载 `NotoSansSC-VF.ttf`（思源黑体可变字体，glyf 轮廓，SIL OFL 许可），放到脚本同级目录。
+
+**② 跑构建脚本**
+
+```bash
+cd <仓库根>/pdfkit/scripts
+python build-font.py
+```
+
+需要 `fonttools`：`pip install fonttools`
+
+脚本做四件事：
+
+1. 把可变字体实例化成 `wght=400`（Regular）静态字体；
+2. 定向子集——白名单为「常用区间 ∪ GB2312 全码表」，产出约 28700 码位；
+3. **逐字形拆分同形字**：给每个冲突码位复制一份独立的字形（glyf + hmtx），
+   让 cmap 严格一对一。这是解决约束二的关键，不是「二选一丢字符」；
+4. 产出前断言 cmap 无多对一，不满足则拒绝写文件。
+
+成功时输出类似：
+
+```
+GB2312 码位 7445，产出字体缺 0 个
+拆分同形字 19 个
+cmap 一对一校验：通过
+```
+
+**③ 部署并验证**
+
+```bash
+cp NotoSansSC-builtin.ttf ../src/main/resources/fonts/NotoSansSC-Regular.ttf
+```
+
+然后跑字体相关的测试：
+
+```bash
+export JAVA_HOME="C:/dev/jdk-17.0.13"
+/c/dev/gradle-8.14/bin/gradle test --tests "io.pdfkit.FunctionalTest.bundledChineseFontIsUsable"
+```
+
+这个用例会扫 GB2312 全部 7445 个码位，逐个写入 PDF 再提取比对。
+它能抓住 cmap 多对一的问题；**`hasGlyph` 抓不到**，所以这个用例必须过。
+
+**④ 确认打进产物**
+
+```bash
+unzip -l build/install/pdfkit/lib/pdfkit-1.2.0.jar | grep fonts/NotoSans
+```
+
+应能看到约 9.75 MB 的 `NotoSansSC-Regular.ttf`。
+
+### 换字体时容易忽略的一点
+
+字体变了，`.docx` 导出的字体设置（`ConvertPlusOps` 里写死的「Microsoft YaHei」）
+不会跟着变。那是 Word 端的字体，与 PDF 内的嵌入字体是两回事，不需要同步修改。
+
