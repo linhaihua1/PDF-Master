@@ -146,10 +146,33 @@ public final class RedactOps {
                 }
             });
 
-    /** 把带涂黑矩形的页面栅格化，填黑后替换页面内容。 */
+    /**
+     * 把带涂黑矩形的页面栅格化，填黑后替换页面内容。
+     *
+     * <p><b>这是「真涂黑」与「假涂黑」的分界线</b>。常见的错误做法是在页面上画个黑色矩形盖住文字——
+     * 视觉上遮住了，但文字仍以文本对象形式存在于内容流里，复制、搜索、文本提取都能还原，
+     * 甚至用编辑器删掉那个矩形就全暴露了。真正安全的做法是：把整页渲染成像素图 → 在像素图上填黑 →
+     * 用这张图<b>替换掉</b>原页面内容。原文字对象因此彻底消失。
+     *
+     * <p>关键的三步（少任一步都会留下可还原的残迹）：
+     * <ol>
+     *   <li>{@code page.setContents(new PDStream(doc))} —— 清空原内容流，这一步才是"真删除"；</li>
+     *   <li>{@code page.setResources(new PDResources())} —— 清空资源字典，
+     *       否则字体、图片对象仍作为资源挂在页面上，虽不可见但能被提取；</li>
+     *   <li>再把填好黑块的位图作为新内容画进去。</li>
+     * </ol>
+     *
+     * <p><b>代价不可逆</b>：栅格化后该页不再有文字层，无法选中、搜索、复制，
+     * 打印清晰度也受 DPI 限制。所以只对被标记的页做栅格化，未涉及的页原样保留。
+     *
+     * <p>坐标换算：PDF 坐标原点在左下、Y 向上；位图坐标原点在左上、Y 向下。
+     * 所以 Y 方向要用 {@code box.getUpperRightY() - (r.y + r.h)} 翻转，
+     * 且要减去 CropBox 的左下角偏移（页面可能被裁剪过，原点不在 0,0）。
+     */
     static void rasterizeAndRedact(PDDocument doc, Map<Integer, List<Rect>> byPage, int dpi, Ctx ctx) throws IOException {
         PDFRenderer renderer = new PDFRenderer(doc);
         List<Integer> pageNos = new ArrayList<>(byPage.keySet());
+        // 按页号排序只是为了进度条按顺序推进，不影响正确性
         pageNos.sort(Integer::compareTo);
         int i = 0;
         for (int pageNo : pageNos) {
@@ -160,9 +183,12 @@ public final class RedactOps {
             BufferedImage img = renderer.renderImageWithDPI(pageNo - 1, dpi, ImageType.RGB);
             Graphics2D g = img.createGraphics();
             g.setColor(Color.BLACK);
+            // 页面尺寸（pt）到位图尺寸（px）的换算系数，横纵分别算以适配非等比渲染
             double sx = img.getWidth() / (double) box.getWidth();
             double sy = img.getHeight() / (double) box.getHeight();
             for (Rect r : byPage.get(pageNo)) {
+                // 四舍五入方向刻意不同：起点 floor、尺寸 ceil，保证填黑区域只会比标记框
+                // 略大不会略小——漏出一个像素就可能泄露敏感信息
                 int x1 = (int) Math.floor((r.x - box.getLowerLeftX()) * sx);
                 int y1 = (int) Math.floor((box.getUpperRightY() - (r.y + r.h)) * sy);
                 int w1 = (int) Math.ceil(r.w * sx);
@@ -171,12 +197,15 @@ public final class RedactOps {
             }
             g.dispose();
 
-            // 清空原内容流：这一步才是"真删除"
+            // 清空原内容流：这一步才是"真删除"。只画黑框而不清内容流的话，
+            // 文字对象仍在文件里，复制/搜索/提取都能拿到原文。
             page.setContents(new PDStream(doc));
+            // 资源字典也要清：字体文件、图像对象若不摘除，仍可从资源里提取出原文渲染结果
             page.setResources(new PDResources());
             PDImageXObject pdImg = JPEGFactory.createFromImage(doc, img, 0.85f);
             try (PDPageContentStream cs = new PDPageContentStream(doc, page,
                     PDPageContentStream.AppendMode.APPEND, true, true)) {
+                // 位图按原始页面尺寸铺满，保持阅读比例不变
                 cs.drawImage(pdImg, box.getLowerLeftX(), box.getLowerLeftY(), box.getWidth(), box.getHeight());
             }
         }
@@ -193,17 +222,35 @@ public final class RedactOps {
             this.patterns = patterns;
         }
 
+        /**
+         * 判断当前行是否命中敏感模式，命中则记录<b>整行</b>的包围盒。
+         *
+         * <p><b>为什么先去掉所有空白再匹配</b>：手机号、身份证常被排版拆成
+         * 「138 0013 8000」，按原样匹配会漏。去掉空白后 {@code \d{11}} 才连得上。
+         * 因为这里只做「是否命中」的布尔判断，不依赖匹配位置，所以扁平化不影响正确性。
+         *
+         * <p><b>命中后涂的是整行而不是命中片段</b>：定位到字符级需要把匹配区间映射回
+         * TextPosition 下标，实现复杂且容易错位；而涂黑的原则是「宁可多涂，不可漏涂」。
+         * 代价是一行里有个手机号，同行的其他文字也会被遮住——这是安全优先的取舍，
+         * 用户可以在结果摘要里看到具体涂了哪几页，据此判断是否要改用「区域涂黑」。
+         *
+         * <p>{@code Math.max(2f, maxY - minY)} 给高度兜底 2pt：纯空格行或字体高度异常时
+         * 高度可能算成 0，画不出可见黑块，等于没涂。
+         */
         @Override
         protected void writeString(String text, List<TextPosition> positions) throws IOException {
             if (positions == null || positions.isEmpty()) {
                 return;
             }
             String flat = text.replaceAll("\\s+", "");
+            // 只判断是否命中，不取匹配区间——理由见本方法 javadoc
             boolean matched = patterns.stream().anyMatch(p -> p.matcher(flat).find());
             if (!matched) {
                 return;
             }
             PDPage page = getCurrentPage();
+            // 死代码：pageHeight 与 baseY 声明后都没有被引用（下方直接调 getCropBox()
+            // 再取 UpperRightY），可以安全删除这两个局部变量
             float pageHeight = page.getCropBox().getHeight();
             float baseY = page.getCropBox().getUpperRightY();
             float minX = Float.MAX_VALUE;
@@ -223,10 +270,13 @@ public final class RedactOps {
             if (minX > maxX) {
                 return;
             }
-            // TextPosition 以页面顶部为原点，转成 PDF 底部原点
+            // TextPosition 以页面顶部为原点，转成 PDF 底部原点：
+            // Y_pdf = 页面顶部 - 包围盒底边(即 maxY)，而不是减 minY
             float pdfY = page.getCropBox().getUpperRightY() - maxY;
             float rectW = maxX - minX;
+            // 高度兜底 2pt，理由见本方法 javadoc
             float rectH = Math.max(2f, maxY - minY);
+            // 横坐标要补上 CropBox 的左下角偏移：被裁剪过的页面原点不在 0,0
             hits.add(new Rect(getCurrentPageNo(),
                     minX + page.getCropBox().getLowerLeftX(), pdfY, rectW, rectH));
         }

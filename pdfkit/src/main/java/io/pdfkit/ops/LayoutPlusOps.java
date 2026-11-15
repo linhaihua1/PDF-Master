@@ -17,7 +17,19 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-/** 拼版类能力：海报分块、小册子拼版。 */
+/**
+ * 拼版类能力：海报分块、小册子拼版。
+ *
+ * <p>比 {@link LayoutOps} 的 N-up 更专门的两种印刷排版：
+ * <ul>
+ *   <li><b>海报分块</b> —— 把一页放大后切成 N×M 块，分别打到多张 A4 上再拼起来。
+ *       每块带裁切标记与重叠区，方便手工对齐粘贴。</li>
+ *   <li><b>小册子拼版</b> —— 骑马钉（saddle stitch）装订：一张纸正反两面共 4 页，
+ *       按特定顺序排列，折起来就是一本页码连续的小册子。</li>
+ * </ul>
+ *
+ * <p>两项都用 Form XObject 贴页（原理见 {@link LayoutOps} 的类注释）。
+ */
 public final class LayoutPlusOps {
 
     private LayoutPlusOps() {
@@ -147,7 +159,26 @@ public final class LayoutPlusOps {
 
     // ---------- 共用 ----------
 
-    /** 骑马钉顺序：每张纸正反两面共 4 个页码，页码从 1 开始，0 表示空白。 */
+    /**
+     * 骑马钉顺序：每张纸正反两面共 4 个页码，页码从 1 开始，0 表示空白。
+     *
+     * <p><b>为什么要这个顺序</b>：骑马钉是把一叠纸对折、沿折线装订。折起来之后，
+     * 纸的「左半边」和「右半边」会分别成为前后两页，所以一张纸上要放「最前」和「最后」两页。
+     *
+     * <p>以 8 页为例，正确顺序是：
+     * <pre>
+     * 第 1 张 正面：8 | 1     反面：2 | 7
+     * 第 2 张 正面：6 | 3     反面：4 | 5
+     * </pre>
+     * 双指针从两端向中间夹：left 从小到大、right 从大到小，一次填满正反两面。
+     * 每轮消耗 4 个页码（正面 2 个 + 反面 2 个），所以循环条件是 {@code left < right}。
+     *
+     * <p>页数必须是 4 的倍数，不足的部分由调用方补空白页（{@code padded} 是补齐后的页数），
+     * 否则会出现「空白页被排到中间」的错位。
+     *
+     * @param padded 补齐到 4 的倍数之后的页数
+     * @return 每张纸一组页码，{@code {左, 右}}，按 正面/反面 交替排列
+     */
     static List<int[]> bookletOrder(int padded) {
         List<int[]> out = new ArrayList<>();
         int left = 1;

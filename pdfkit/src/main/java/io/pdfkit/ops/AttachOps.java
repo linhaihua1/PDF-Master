@@ -21,13 +21,36 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 附件类能力：列出、添加、导出。 */
+/**
+ * 附件类能力：列出、添加、导出。
+ *
+ * <p>附件（EmbeddedFile）是「塞进 PDF 里的任意文件」——合同附带的明细表、
+ * 发票附带的凭证扫描件。它不显示在页面上，只在阅读器的附件面板里出现，
+ * 但会随 PDF 一起传输。
+ *
+ * <p><b>附件名的获取路径比想象中绕</b>：PDF 规范把文件名放在三条不同的键上
+ * （{@code /F} 平台无关、{@code /UF} Unicode、{@code /DOS} {@code /Mac} {@code /Unix} 平台相关），
+ * 不同生成器写的位置不一致。所以这里用 {@code PDComplexFileSpecification} 而不是
+ * 简单的字符串映射，由 PDFBox 帮我们处理优先级。
+ *
+ * <p><b>附件名不可信</b>：它完全由 PDF 作者控制，可以写成 {@code ../../evil.exe}
+ * 或 {@code CON}。导出时必须清洗，相关逻辑见 {@link #sanitizeName}，
+ * 这是安全测试里抓出来的高危问题，改动这段代码前请先读那段注释。
+ */
 public final class AttachOps {
 
     private AttachOps() {
     }
 
-    /** 递归收集全部附件（PDF 附件可能分布在多级名称树里）。 */
+    /**
+     * 递归收集全部附件（PDF 附件可能分布在多级名称树里）。
+     *
+     * <p>名称树是「二叉树 + 名称数组」结构，附件可能挂在任意深度的 {@code Kids} 上，
+     * 所以必须递归。两处 {@code catch} 都吞掉异常：一个节点损坏不该让整份附件清单为空，
+     * 能列出多少列多少。
+     *
+     * @param out 累加容器，调用方负责保证非 null（传 {@code LinkedHashMap} 可保序）
+     */
     static Map<String, PDComplexFileSpecification> collect(PDNameTreeNode<PDComplexFileSpecification> node,
                                                            Map<String, PDComplexFileSpecification> out) {
         if (node == null) {
@@ -54,6 +77,17 @@ public final class AttachOps {
         return out;
     }
 
+    /**
+     * 取文档的全部附件（扁平化成「名称 → 文件规格」的 Map）。
+     *
+     * <p>{@code LinkedHashMap} 而不是 HashMap：保持名称树里的原始顺序，
+     * 列表输出与导出时的序号才稳定可比。
+     *
+     * <p><b>只查了 {@code Names/EmbeddedFiles} 这一条路径</b>。PDF 2.0 还允许用
+     * Catalog 的 {@code /AF}（Associated Files）挂附件，本方法查不到。<b>所以「列出 0 个附件」
+     * 不等于文档真的没有附件</b>，只是这一路径下没有。要补全覆盖需在这里追加对
+     * {@code doc.getDocumentCatalog().getCOSObject().getDictionaryObject("AF")} 的遍历。
+     */
     static Map<String, PDComplexFileSpecification> allAttachments(PDDocument doc) {
         var names = doc.getDocumentCatalog().getNames();
         if (names == null) {
@@ -112,6 +146,8 @@ public final class AttachOps {
                     ctx.report(30, "读取附件内容");
                     PDComplexFileSpecification spec = new PDComplexFileSpecification();
                     String fileName = extra.getFileName().toString();
+                    // 两个名字都要设：/F 存原始名（给老阅读器），/UF 存 Unicode 名。
+                    // 只设 /F 时中文文件名在不同 PDF 阅读器里会显示成乱码或被替换。
                     spec.setFile(fileName);
                     spec.setFileUnicode(fileName);
                     try (InputStream in = Files.newInputStream(extra)) {

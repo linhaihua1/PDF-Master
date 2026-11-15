@@ -17,7 +17,25 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
-/** 优化类能力：压缩、修复。 */
+/**
+ * 优化类能力：压缩、修复、画质增强。
+ *
+ * <p>三项都是「在像素层面动手」的能力，这是它们与别的类的根本区别：
+ * 其它能力操作 PDF 对象，这里要先把图片解码成 {@link java.awt.image.BufferedImage}，
+ * 处理完再编码回去。所以三项都吃内存、吃 CPU，也是性能测试的重点观察对象。
+ *
+ * <p><b>统一的图片处理套路</b>：
+ * <ol>
+ *   <li>从 {@code PDImageXObject} 取出 {@code BufferedImage}（可能失败，某些编码取不出来）；</li>
+ *   <li>转成 {@code TYPE_INT_RGB} 并先铺白底——JPEG 不支持透明通道，
+ *       不铺白底的话透明区域会变成黑块；</li>
+ *   <li>处理像素（缩放、去噪、锐化、二值化）；</li>
+ *   <li>用 {@code JPEGFactory.createFromImage} 编回 PDF。</li>
+ * </ol>
+ *
+ * <p><b>单张图片失败绝不中断整批</b>：一份扫描件里几百张图，总有个别用了怪异的
+ * 色彩空间或加密编码。跳过它、记一条日志、继续处理剩下的，比让整个任务失败有用得多。
+ */
 public final class OptimizeOps {
 
     private OptimizeOps() {
@@ -90,18 +108,23 @@ public final class OptimizeOps {
                                 int h = bi.getHeight();
                                 BufferedImage target = bi;
                                 if (Math.max(w, h) > maxDim) {
+                                    // 超长边才缩：小的图放大只会变糊，不会变小
                                     float scale = maxDim / (float) Math.max(w, h);
                                     int nw = Math.max(1, Math.round(w * scale));
                                     int nh = Math.max(1, Math.round(h * scale));
                                     target = new BufferedImage(nw, nh, BufferedImage.TYPE_INT_RGB);
                                     Graphics2D g = target.createGraphics();
+                                    // 双线性插值：缩放速度与质量的折中。用最近邻会有锯齿，
+                                    // 用双三次（BICUBIC）在大图上明显更慢
                                     g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
                                             java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                                    // 必须铺白底：JPEG 无透明通道，透明像素会被编码成黑块
                                     g.setColor(java.awt.Color.WHITE);
                                     g.fillRect(0, 0, nw, nh);
                                     g.drawImage(bi, 0, 0, nw, nh, null);
                                     g.dispose();
                                 } else if (bi.getType() != BufferedImage.TYPE_INT_RGB) {
+                                    // 尺寸不用缩，但类型仍是调色板/灰度/带 alpha，同样要转 RGB 才能编 JPEG
                                     target = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
                                     Graphics2D g = target.createGraphics();
                                     g.setColor(java.awt.Color.WHITE);
@@ -137,6 +160,9 @@ public final class OptimizeOps {
                     String ratio = before > 0 ? String.format("（%.1f MB → %.1f MB，%d%%）",
                             before / 1048576.0, after / 1048576.0, Math.round(after * 100.0 / before)) : "";
                     ctx.report(100, "压缩完成：处理 " + replaced + " 张图片，跳过 " + skipped + " 张 " + ratio);
+                    // 压缩反而变大时必须明说。压缩的主力手段是图片重采样，
+                    // 纯文字 PDF 本来就没有多少图片可压，重新编码反而可能略增体积。
+                    // 不提示的话用户会以为功能失效。
                     if (before > 0 && after >= before) {
                         ctx.setResult("注意：本次压缩没有减小体积（原文件 " + String.format("%.2f", before / 1048576.0)
                                 + " MB，新文件 " + String.format("%.2f", after / 1048576.0)
@@ -194,10 +220,25 @@ public final class OptimizeOps {
 
     // ---------- 图像算法 ----------
 
+    /**
+     * 转 RGB（委托给 {@link EditPlusOps#toRgb}）。
+     *
+     * <p>保留这个包装而不是直接调用，是为了让本类的意图更清楚：增强流程里每次
+     * 变换前后都要保证是 RGB，否则 JPEG 编不出来。真正铺白底的逻辑只有一份，
+     * 避免两处实现漂移。
+     */
     static BufferedImage toRgbSafe(BufferedImage src) {
         return EditPlusOps.toRgb(src);
     }
 
+    /**
+     * 转灰度，但<b>再转回 RGB</b>。
+     *
+     * <p>为什么转两次：{@code TYPE_BYTE_GRAY} 是索引色模型，它的 {@code getRGB} 与
+     * JPEG 编码行为在部分 JDK 版本上不一致（可能按 8 位调色板处理，得到偏色的结果）。
+     * 把它再画一遍成 {@code TYPE_INT_RGB}，后续所有逐像素运算都在确定的三通道
+     * 模型里进行，灰阶值在三个通道上相同，视觉上仍是灰度。
+     */
     static BufferedImage toGray(BufferedImage src) {
         BufferedImage out = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
         java.awt.Graphics2D g = out.createGraphics();
@@ -210,11 +251,24 @@ public final class OptimizeOps {
         return rgb;
     }
 
-    /** 中值滤波去噪，radius 为半径（1-3），窗口越大越平滑也越慢。 */
+    /**
+     * 中值滤波去噪，radius 为半径（1-3），窗口越大越平滑也越慢。
+     *
+     * <p>中值而不是均值：扫描件的噪点通常是孤立黑点，均值会把它糊成一小片灰斑，
+     * 中值则直接丢弃离群值，纸面更干净、文字边缘不糊。
+     *
+     * <p>边界处的坐标用 clamp 到有效范围（<b>复制边缘像素</b>）而不是跳过该邻域。
+     * 跳过会让图像四边的滤波强度弱于中心，出现一圈明显的「未去噪」边。
+     *
+     * <p>复杂度是 O(w·h·side²·log(side²))，因为每个像素都要排序。radius=3 时
+     * 每像素排 49 个值，一张 A4/150DPI 的图约需数秒——这就是上限只开放到 3 的原因。
+     */
     static BufferedImage median(BufferedImage src, int radius) {
         int w = src.getWidth();
         int h = src.getHeight();
         BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        // 遗留的死代码：r/g/b 三个长度 9 的数组后来被 cr/cg/cb 取代（因为窗口可以大于 3×3），
+        // 已无任何引用，可以安全删除
         int[] r = new int[9];
         int[] g = new int[9];
         int[] b = new int[9];
@@ -246,7 +300,17 @@ public final class OptimizeOps {
         return out;
     }
 
-    /** 反锐化掩模：原图 + amount × (原图 - 模糊图)。 */
+    /**
+     * 反锐化掩模：{@code 原图 + amount × (原图 - 模糊图)}。
+     *
+     * <p>括号里那一项是「高频细节」（原图减去它的模糊版本），乘以 amount 再加回原图，
+     * 等于把边缘对比度放大。amount=0 时输出等于原图，1.0 左右是明显锐化，
+     * 超过 2 会出现白边光晕。
+     *
+     * <p>模糊用的是 3×3 高斯核 {@code {1,2,1, 2,4,2, 1,2,1}}（权重和为 16）。
+     * 相比盒式模糊（全是 1），高斯的中心权重更高，模糊后边缘过渡更自然，
+     * 相减得到的高频更干净。除数是 16f 而不是别的数——必须等于核的和，否则整体亮度会漂移。
+     */
     static BufferedImage unsharp(BufferedImage src, float amount) {
         int w = src.getWidth();
         int h = src.getHeight();
@@ -282,6 +346,14 @@ public final class OptimizeOps {
         return out;
     }
 
+    /**
+     * 对比度拉伸：{@code (v - 128) × factor + 128}。
+     *
+     * <p>中点固定取 128（8 位色阶的中值），没有按实际直方图计算。这意味着
+     * <b>整体偏暗的扫描件会被拉得更暗</b>——因为它的有效亮度集中在 128 以下，
+     * 围绕 128 拉伸会把暗部推得更极端。对这类图应先做亮度/伽马校正再调对比度。
+     * 若将来要改进，可改成先统计直方图的 5% 与 95% 分位点，再线性映射到 0–255。
+     */
     static BufferedImage contrast(BufferedImage src, float factor) {
         int w = src.getWidth();
         int h = src.getHeight();
