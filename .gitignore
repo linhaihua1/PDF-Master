@@ -32,3 +32,9 @@ integration/patcher-cli/obj/
 *.swp
 .DS_Store
 Thumbs.db
+
+# PdfKit（Java 桌面端）构建产物
+pdfkit/.gradle/
+pdfkit/build/
+pdfkit/dist/
+pdfkit/dist-installer/

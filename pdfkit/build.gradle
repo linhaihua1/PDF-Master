@@ -1,0 +1,65 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'io.pdfkit'
+version = '1.0.0'
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(17) }
+}
+
+repositories {
+    // 国内优先，避免依赖下载卡在 Maven 中央
+    maven { url 'https://maven.aliyun.com/repository/public' }
+    maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+    mavenCentral()
+}
+
+ext {
+    pdfbox = '3.0.5'
+    flatlaf = '3.5.4'
+    bouncycastle = '1.80'
+}
+
+dependencies {
+    implementation "org.apache.pdfbox:pdfbox:${pdfbox}"
+    implementation "org.apache.pdfbox:pdfbox-tools:${pdfbox}"
+    implementation "org.apache.pdfbox:xmpbox:${pdfbox}"
+    implementation "org.apache.pdfbox:fontbox:${pdfbox}"
+    implementation "org.bouncycastle:bcprov-jdk18on:${bouncycastle}"
+    implementation "org.bouncycastle:bcpkix-jdk18on:${bouncycastle}"
+    implementation "com.formdev:flatlaf:${flatlaf}"
+    implementation "com.formdev:flatlaf-extras:${flatlaf}"
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+application {
+    mainClass = 'io.pdfkit.App'
+    applicationDefaultJvmArgs = [
+            '-Dfile.encoding=UTF-8',
+            '-Djava.awt.headless=false',
+            '-Xmx1024m'
+    ]
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xlint:deprecation'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'io.pdfkit.App',
+                'Implementation-Title': 'PdfKit',
+                'Implementation-Version': project.version
+    }
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'java.awt.headless', 'false'
+}
