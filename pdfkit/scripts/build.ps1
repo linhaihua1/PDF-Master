@@ -1,4 +1,4 @@
-# PdfKit 一键构建脚本
+﻿# PdfKit 一键构建脚本
 # 用法：
 #   .\scripts\build.ps1              # 编译 + 测试
 #   .\scripts\build.ps1 -Package     # 编译 + 测试 + 绿色版 + 安装包
