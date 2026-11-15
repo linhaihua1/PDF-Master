@@ -15,7 +15,7 @@ WiX 只需在**打安装包**时用；只出绿色版可以不装。
 ## 2. 一键构建
 
 ```powershell
-cd C:\Users\Administrator\Desktop\PDF\pdfkit
+cd <仓库根>\pdfkit
 
 # 编译 + 测试
 .\scripts\build.ps1
